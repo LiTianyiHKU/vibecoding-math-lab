@@ -1,0 +1,7 @@
+.animated-gradient-text {
+  display: inline-block;
+  color: transparent;
+  background-size: 280% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+}

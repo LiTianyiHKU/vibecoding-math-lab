@@ -1,0 +1,1119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>抽样分布</title>
+    <link rel="stylesheet" href="../shared-demo-theme.css" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #071018;
+        --panel: rgba(10, 20, 29, 0.84);
+        --panel-strong: rgba(12, 25, 37, 0.94);
+        --line: rgba(174, 204, 220, 0.2);
+        --line-strong: rgba(174, 204, 220, 0.34);
+        --ink: #ecf7fb;
+        --muted: #9db4c3;
+        --cyan: #19c8f2;
+        --amber: #f3bd37;
+        --violet: #d65cff;
+        --green: #39e49b;
+        --shadow: 0 28px 88px rgba(0, 0, 0, 0.32);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 1280px;
+        min-height: 100vh;
+        overflow: auto;
+        color: var(--ink);
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .app {
+        display: grid;
+        grid-template-rows: auto auto;
+        gap: 16px;
+        width: max(100vw, 1280px);
+        min-height: 100vh;
+        padding: 18px;
+      }
+
+      .lab-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        min-height: 64px;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+      }
+
+      .title-lockup {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-width: 0;
+      }
+
+      .mark {
+        display: grid;
+        place-items: end center;
+        flex: 0 0 auto;
+        width: 56px;
+        height: 56px;
+        border: 1px solid rgba(25, 200, 242, 0.46);
+        border-radius: 8px;
+        background:
+          linear-gradient(180deg, transparent 20%, rgba(25, 200, 242, 0.12)),
+          repeating-linear-gradient(90deg, transparent 0 7px, rgba(25, 200, 242, 0.4) 8px 10px, transparent 11px 15px);
+        color: var(--cyan);
+        box-shadow: inset 0 1px rgba(255, 255, 255, 0.18), 0 18px 44px rgba(25, 200, 242, 0.12);
+      }
+
+      .mark svg {
+        width: 42px;
+        height: 38px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(26px, 3vw, 40px);
+        line-height: 1.05;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        max-width: 720px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .help-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 0 12px;
+        border: 1px solid rgba(88, 166, 255, 0.42);
+        border-radius: 8px;
+        background: rgba(23, 49, 78, 0.42);
+        color: #a9d6ff;
+        font-size: 13px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .main-panel {
+        display: grid;
+        grid-template-rows: auto auto auto;
+        gap: 14px;
+        min-height: 0;
+        overflow: visible;
+        padding: 16px;
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        background:
+          radial-gradient(circle at 42% 0%, rgba(25, 200, 242, 0.1), transparent 34%),
+          linear-gradient(180deg, rgba(11, 25, 38, 0.94), rgba(8, 18, 29, 0.9));
+        box-shadow: var(--shadow);
+      }
+
+      .mode-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: center;
+      }
+
+      .mode-buttons {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(120px, 1fr));
+        gap: 10px;
+      }
+
+      .mode-button,
+      .overlay-toggle,
+      .preset-button,
+      .reset-button {
+        min-height: 44px;
+        border: 1px solid rgba(174, 204, 220, 0.26);
+        border-radius: 8px;
+        background: rgba(13, 25, 35, 0.88);
+        color: var(--ink);
+        cursor: pointer;
+        font-weight: 900;
+        transition:
+          transform 160ms ease,
+          border-color 160ms ease,
+          background 160ms ease,
+          box-shadow 160ms ease,
+          color 160ms ease;
+      }
+
+      .mode-button {
+        font-size: clamp(17px, 1.6vw, 23px);
+        line-height: 1;
+      }
+
+      .mode-button:hover,
+      .overlay-toggle:hover,
+      .preset-button:hover,
+      .reset-button:hover {
+        transform: translateY(-1px);
+        border-color: var(--active-color);
+        background: rgba(25, 200, 242, 0.12);
+      }
+
+      .mode-button.active {
+        border-color: var(--active-color);
+        background:
+          radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--active-color) 28%, transparent), transparent 72%),
+          rgba(20, 48, 76, 0.9);
+        color: #ffffff;
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--active-color) 32%, transparent);
+      }
+
+      .overlay-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 16px;
+        white-space: nowrap;
+      }
+
+      .switch {
+        position: relative;
+        width: 46px;
+        height: 24px;
+        border-radius: 999px;
+        background: rgba(174, 204, 220, 0.24);
+      }
+
+      .switch::after {
+        content: "";
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        width: 16px;
+        height: 16px;
+        border-radius: 999px;
+        background: #d7e7ef;
+        transition: transform 180ms ease, background 180ms ease;
+      }
+
+      .overlay-toggle.active {
+        border-color: var(--cyan);
+        color: #dffffb;
+      }
+
+      .overlay-toggle.active .switch {
+        background: rgba(25, 200, 242, 0.34);
+      }
+
+      .overlay-toggle.active .switch::after {
+        transform: translateX(22px);
+        background: var(--cyan);
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: 300px minmax(920px, 1fr);
+        gap: 16px;
+        min-height: 0;
+      }
+
+      .control-panel,
+      .chart-panel,
+      .observation {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(8, 18, 29, 0.72);
+      }
+
+      .control-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        min-height: 0;
+        padding: 18px;
+      }
+
+      .panel-title {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .panel-title h2,
+      .chart-title h2 {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.25;
+      }
+
+      .dist-symbol {
+        color: var(--active-color);
+        font-family: "Times New Roman", "STIX Two Text", serif;
+        font-size: 23px;
+        font-weight: 900;
+      }
+
+      .parameter-list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .parameter {
+        display: grid;
+        gap: 12px;
+      }
+
+      .slider-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .slider-head label {
+        color: #d9eef4;
+        font-size: 14px;
+        font-weight: 850;
+      }
+
+      .value-pill {
+        display: inline-grid;
+        place-items: center;
+        min-width: 70px;
+        min-height: 36px;
+        padding: 0 12px;
+        border: 1px solid rgba(174, 204, 220, 0.22);
+        border-radius: 8px;
+        background: rgba(3, 13, 22, 0.72);
+        color: #ffffff;
+        font-size: 18px;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .range-control {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 100%;
+        height: 24px;
+        margin: 0;
+        background: transparent;
+        accent-color: var(--active-color);
+        cursor: pointer;
+      }
+
+      .range-control::-webkit-slider-runnable-track {
+        height: 8px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, color-mix(in srgb, var(--active-color) 74%, #ffffff 0%), rgba(174, 204, 220, 0.16));
+      }
+
+      .range-control::-webkit-slider-thumb {
+        width: 22px;
+        height: 22px;
+        margin-top: -7px;
+        border: 2px solid #dffffb;
+        border-radius: 999px;
+        background: var(--active-color);
+        box-shadow: 0 0 18px color-mix(in srgb, var(--active-color) 55%, transparent);
+      }
+
+      .range-control::-moz-range-track {
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(174, 204, 220, 0.16);
+      }
+
+      .range-control::-moz-range-progress {
+        height: 8px;
+        border-radius: 999px;
+        background: var(--active-color);
+      }
+
+      .range-control::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #dffffb;
+        border-radius: 999px;
+        background: var(--active-color);
+      }
+
+      .range-bounds {
+        display: flex;
+        justify-content: space-between;
+        color: #7892a3;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .option-check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 42px;
+        padding: 10px 12px;
+        border: 1px solid rgba(174, 204, 220, 0.22);
+        border-radius: 8px;
+        background: rgba(3, 13, 22, 0.48);
+        color: #dceaf2;
+        font-size: 13px;
+        font-weight: 850;
+        cursor: pointer;
+      }
+
+      .option-check input {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        accent-color: var(--active-color);
+        cursor: pointer;
+      }
+
+      .option-check span {
+        min-width: 0;
+      }
+
+      .preset-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 9px;
+        margin-top: auto;
+      }
+
+      .preset-button,
+      .reset-button {
+        min-height: 42px;
+        color: #dceaf2;
+        font-size: 14px;
+      }
+
+      .preset-button.active {
+        border-color: var(--active-color);
+        background: color-mix(in srgb, var(--active-color) 18%, rgba(13, 25, 35, 0.9));
+        color: #ffffff;
+      }
+
+      .hint-box {
+        padding: 13px 14px;
+        border: 1px solid rgba(88, 166, 255, 0.26);
+        border-radius: 8px;
+        background: rgba(28, 61, 95, 0.22);
+        color: #b7cbda;
+        font-size: 13px;
+        line-height: 1.65;
+      }
+
+      .hint-box strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--active-color);
+      }
+
+      .chart-panel {
+        position: relative;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        padding: 18px;
+      }
+
+      .chart-title {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        min-height: 42px;
+      }
+
+      .chart-title span {
+        color: var(--active-color);
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      #chart {
+        display: block;
+        width: 100%;
+        height: 100%;
+        min-height: 500px;
+      }
+
+      .observations {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .observation {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+        min-height: 104px;
+        padding: 16px;
+      }
+
+      .obs-icon {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border: 1px solid color-mix(in srgb, var(--obs-color) 48%, transparent);
+        border-radius: 8px;
+        color: var(--obs-color);
+        background: color-mix(in srgb, var(--obs-color) 12%, transparent);
+      }
+
+      .observation h3 {
+        margin: 0 0 5px;
+        color: var(--obs-color);
+        font-size: 15px;
+        line-height: 1.2;
+      }
+
+      .observation p {
+        margin: 0;
+        color: #b7c9d2;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      @media (min-width: 1600px) {
+        body {
+          min-width: 1440px;
+        }
+
+        .app {
+          width: max(100vw, 1440px);
+          padding: 22px;
+        }
+
+        .workspace {
+          grid-template-columns: 320px minmax(1100px, 1fr);
+        }
+
+        #chart {
+          min-height: 580px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app" style="--active-color: var(--cyan)">
+      <header class="lab-header">
+        <div class="title-lockup">
+          <div class="mark" aria-hidden="true">
+            <svg viewBox="0 0 56 48" fill="none">
+              <path d="M5 42H51" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <path d="M9 42C13 19 21 8 32 8C42 8 47 21 50 42" stroke="currentColor" stroke-width="2.6" />
+              <path d="M9 42V9M18 42V27M27 42V15M36 42V12M45 42V27" stroke="currentColor" stroke-width="1.8" opacity=".65" />
+            </svg>
+          </div>
+          <div>
+            <h1>抽样分布</h1>
+            <p class="subtitle">调节自由度，观察 χ²、F、t 分布的形状、偏斜和尾部变化。</p>
+          </div>
+        </div>
+        <div class="help-chip">调参后曲线自动过渡</div>
+      </header>
+
+      <section class="main-panel" aria-label="抽样分布">
+        <div class="mode-row">
+          <div class="mode-buttons" aria-label="分布切换">
+            <button type="button" class="mode-button active" data-mode="chi">χ² 分布</button>
+            <button type="button" class="mode-button" data-mode="f">F 分布</button>
+            <button type="button" class="mode-button" data-mode="t">t 分布</button>
+          </div>
+          <button type="button" class="overlay-toggle" id="overlayToggle" aria-pressed="false">
+            <span>叠加对比</span>
+            <span class="switch" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <div class="workspace">
+          <aside class="control-panel" aria-label="参数控制">
+            <div>
+              <div class="panel-title">
+                <h2 id="controlTitle">χ² 分布参数</h2>
+                <span class="dist-symbol" id="distSymbol">χ²</span>
+              </div>
+              <div class="parameter-list" id="parameterList"></div>
+            </div>
+            <div class="preset-grid" aria-label="参数预设">
+              <button type="button" class="preset-button" data-preset="small">小自由度</button>
+              <button type="button" class="preset-button active" data-preset="medium">中等自由度</button>
+              <button type="button" class="preset-button" data-preset="large">大自由度</button>
+              <button type="button" class="reset-button" id="resetButton">重置</button>
+              <div class="hint-box" id="hintBox"></div>
+            </div>
+          </aside>
+
+          <section class="chart-panel" aria-label="概率密度曲线图">
+            <div class="chart-title">
+              <h2>概率密度函数 <em>f(x)</em></h2>
+              <span id="currentLabel">当前分布：χ²(k = 5)</span>
+            </div>
+            <canvas id="chart"></canvas>
+          </section>
+        </div>
+
+        <section class="observations" aria-label="观察结论">
+          <article class="observation" style="--obs-color: #58a6ff">
+            <div class="obs-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none">
+                <path d="M4 18L20 6M7 21H4V18M17 3H20V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
+            <div>
+              <h3>定义域</h3>
+              <p id="supportText"></p>
+            </div>
+          </article>
+          <article class="observation" style="--obs-color: #d65cff">
+            <div class="obs-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none">
+                <path d="M4 19C7 19 7 5 12 5C17 5 17 19 20 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                <path d="M12 5V19" stroke="currentColor" stroke-width="1.5" opacity=".45" />
+              </svg>
+            </div>
+            <div>
+              <h3>形状与偏斜</h3>
+              <p id="shapeText"></p>
+            </div>
+          </article>
+          <article class="observation" style="--obs-color: #39e49b">
+            <div class="obs-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none">
+                <path d="M4 18C7 9 10 6 13 8C16 10 17 17 20 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                <path d="M4 18H20" stroke="currentColor" stroke-width="1.6" opacity=".5" />
+              </svg>
+            </div>
+            <div>
+              <h3>尾部厚度</h3>
+              <p id="tailText"></p>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const state = {
+        mode: "chi",
+        overlay: false,
+        params: {
+          chi: { k: 5 },
+          f: { d1: 5, d2: 10 },
+          t: { nu: 10 },
+        },
+        showNormalForT: false,
+        previousCurves: [],
+        targetCurves: [],
+        transitionStart: performance.now(),
+      };
+
+      const colors = {
+        chi: "#19c8f2",
+        f: "#f3bd37",
+        t: "#d65cff",
+        normal: "#dceaf2",
+      };
+
+      const labels = {
+        chi: { name: "χ² 分布", symbol: "χ²", title: "χ² 分布参数" },
+        f: { name: "F 分布", symbol: "F", title: "F 分布参数" },
+        t: { name: "t 分布", symbol: "t", title: "t 分布参数" },
+      };
+
+      const parameterMeta = {
+        chi: [{ key: "k", label: "自由度 k", min: 1, max: 60, step: 1 }],
+        f: [
+          { key: "d1", label: "分子自由度 d1", min: 1, max: 60, step: 1 },
+          { key: "d2", label: "分母自由度 d2", min: 1, max: 60, step: 1 },
+        ],
+        t: [{ key: "nu", label: "自由度 ν", min: 1, max: 100, step: 1 }],
+      };
+
+      const presets = {
+        chi: {
+          small: { k: 2 },
+          medium: { k: 5 },
+          large: { k: 30 },
+        },
+        f: {
+          small: { d1: 2, d2: 5 },
+          medium: { d1: 5, d2: 10 },
+          large: { d1: 30, d2: 30 },
+        },
+        t: {
+          small: { nu: 2 },
+          medium: { nu: 10 },
+          large: { nu: 30 },
+        },
+      };
+
+      const defaultParams = {
+        chi: { k: 5 },
+        f: { d1: 5, d2: 10 },
+        t: { nu: 10 },
+      };
+
+      const app = document.querySelector(".app");
+      const canvas = document.querySelector("#chart");
+      const ctx = canvas.getContext("2d");
+      const parameterList = document.querySelector("#parameterList");
+      const controlTitle = document.querySelector("#controlTitle");
+      const distSymbol = document.querySelector("#distSymbol");
+      const currentLabel = document.querySelector("#currentLabel");
+      const hintBox = document.querySelector("#hintBox");
+      const supportText = document.querySelector("#supportText");
+      const shapeText = document.querySelector("#shapeText");
+      const tailText = document.querySelector("#tailText");
+      const overlayToggle = document.querySelector("#overlayToggle");
+
+      let dpr = 1;
+      let width = 0;
+      let height = 0;
+      let domain = { xMin: 0, xMax: 20, yMax: 1 };
+
+      document.querySelectorAll("[data-mode]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.mode = button.dataset.mode;
+          syncUI();
+          updateCurves();
+        });
+      });
+
+      overlayToggle.addEventListener("click", () => {
+        state.overlay = !state.overlay;
+        syncUI();
+        updateCurves();
+      });
+
+      document.querySelector("#resetButton").addEventListener("click", () => {
+        state.params[state.mode] = { ...defaultParams[state.mode] };
+        syncUI();
+        updateCurves();
+      });
+
+      document.querySelectorAll("[data-preset]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.params[state.mode] = { ...presets[state.mode][button.dataset.preset] };
+          syncUI();
+          updateCurves();
+        });
+      });
+
+      window.addEventListener("resize", () => {
+        resize();
+        updateCurves(false);
+      });
+
+      function syncUI() {
+        const active = labels[state.mode];
+        const activeColor = colors[state.mode];
+        app.style.setProperty("--active-color", activeColor);
+        controlTitle.textContent = active.title;
+        distSymbol.textContent = active.symbol;
+        currentLabel.textContent = `当前分布：${formatDistributionLabel(state.mode)}`;
+        overlayToggle.classList.toggle("active", state.overlay);
+        overlayToggle.setAttribute("aria-pressed", String(state.overlay));
+
+        document.querySelectorAll("[data-mode]").forEach((button) => {
+          button.classList.toggle("active", button.dataset.mode === state.mode);
+          button.style.setProperty("--active-color", colors[button.dataset.mode]);
+        });
+
+        parameterList.innerHTML = "";
+        parameterMeta[state.mode].forEach((meta) => {
+          const wrap = document.createElement("div");
+          wrap.className = "parameter";
+          wrap.innerHTML = `
+            <div class="slider-head">
+              <label for="range-${meta.key}">${meta.label}</label>
+              <span class="value-pill" id="value-${meta.key}">${state.params[state.mode][meta.key]}</span>
+            </div>
+            <input
+              class="range-control"
+              id="range-${meta.key}"
+              type="range"
+              min="${meta.min}"
+              max="${meta.max}"
+              step="${meta.step}"
+              value="${state.params[state.mode][meta.key]}"
+              data-param="${meta.key}"
+              aria-label="${meta.label}"
+            />
+            <div class="range-bounds">
+              <span>${meta.min}</span>
+              <span>${meta.max}</span>
+            </div>
+          `;
+          parameterList.appendChild(wrap);
+        });
+
+        if (state.mode === "t") {
+          const option = document.createElement("label");
+          option.className = "option-check";
+          option.innerHTML = `
+            <input type="checkbox" id="normalCompare" ${state.showNormalForT ? "checked" : ""} />
+            <span>显示标准正态对照 N(0,1)</span>
+          `;
+          parameterList.appendChild(option);
+          option.querySelector("#normalCompare").addEventListener("change", (event) => {
+            state.showNormalForT = event.target.checked;
+            updateObservations();
+            updateCurves();
+          });
+        }
+
+        parameterList.querySelectorAll("[data-param]").forEach((input) => {
+          input.addEventListener("input", () => {
+            const meta = parameterMeta[state.mode].find((item) => item.key === input.dataset.param);
+            state.params[state.mode][meta.key] = Number(input.value);
+            document.querySelector(`#value-${meta.key}`).textContent = state.params[state.mode][meta.key];
+            currentLabel.textContent = `当前分布：${formatDistributionLabel(state.mode)}`;
+            syncPresetButtons();
+            updateObservations();
+            updateCurves();
+          });
+        });
+
+        syncPresetButtons();
+        updateObservations();
+      }
+
+      function syncPresetButtons() {
+        document.querySelectorAll("[data-preset]").forEach((button) => {
+          const preset = presets[state.mode][button.dataset.preset];
+          button.classList.toggle("active", sameParams(state.params[state.mode], preset));
+        });
+      }
+
+      function updateObservations() {
+        if (state.mode === "chi") {
+          const { k } = state.params.chi;
+          supportText.textContent = "x ∈ [0, +∞)，只在非负区间取值。";
+          shapeText.textContent = k <= 3 ? "小自由度时强右偏，峰值靠近 0。" : k < 20 ? "仍右偏，但自由度越大曲线越接近钟形。" : "高自由度时偏斜明显减弱，近似正态形状。";
+          tailText.textContent = "右尾较长；k 增大时相对尾部变薄、峰值右移。";
+          hintBox.innerHTML = `<strong>提示</strong>k = ${k}。自由度越大，χ² 分布越向右移动，并逐渐减弱右偏。`;
+        } else if (state.mode === "f") {
+          const { d1, d2 } = state.params.f;
+          supportText.textContent = "x ∈ [0, +∞)，常用于方差比和 ANOVA。";
+          shapeText.textContent = "曲线始终右偏；两个自由度共同决定峰值位置。";
+          tailText.textContent = d2 <= 5 ? "分母自由度较小时右尾很厚，极端值更常见。" : "d2 增大时右尾迅速变薄，曲线更集中。";
+          hintBox.innerHTML = `<strong>提示</strong>d1 = ${d1}，d2 = ${d2}。固定 d1 时，d2 越小右尾越厚。`;
+        } else {
+          const { nu } = state.params.t;
+          supportText.textContent = "x ∈ (−∞, +∞)，定义在整条实数轴上。";
+          shapeText.textContent = "关于 0 对称；自由度增大时越接近标准正态。";
+          tailText.textContent = nu <= 5 ? "小自由度时双侧尾部较厚，对极端值更敏感。" : "自由度增大后尾部变薄，逐渐贴近正态分布。";
+          hintBox.innerHTML = `<strong>提示</strong>ν = ${nu}。ν 越大，t 分布和标准正态越难区分。${state.showNormalForT ? "浅色虚线为标准正态对照。" : ""}`;
+        }
+      }
+
+      function updateCurves(animate = true) {
+        const oldTarget = state.targetCurves.length ? state.targetCurves : buildCurves();
+        state.previousCurves = oldTarget;
+        state.targetCurves = buildCurves();
+        state.transitionStart = animate ? performance.now() : performance.now() - 260;
+      }
+
+      function buildCurves() {
+        const modes = state.overlay ? ["chi", "f", "t"] : [state.mode];
+        domain = computeDomain(modes);
+        const curves = modes.map((mode) => ({
+          mode,
+          color: colors[mode],
+          label: formatDistributionLabel(mode),
+          points: sampleDistribution(mode, domain.xMin, domain.xMax, 360),
+        }));
+        if (state.mode === "t" && state.showNormalForT) {
+          curves.push({
+            mode: "normal",
+            color: colors.normal,
+            label: "N(0,1)",
+            dashed: true,
+            points: sampleDistribution("normal", domain.xMin, domain.xMax, 360),
+          });
+        }
+        const maxY = Math.max(0.001, ...curves.flatMap((curve) => curve.points.map((point) => point.y)));
+        domain.yMax = maxY * 1.18;
+        return curves;
+      }
+
+      function computeDomain(modes) {
+        if (modes.length > 1) {
+          const chiMax = Math.max(16, state.params.chi.k + 5 * Math.sqrt(2 * state.params.chi.k));
+          return { xMin: -6, xMax: Math.min(46, Math.max(18, chiMax, 12)), yMax: 1 };
+        }
+        if (state.mode === "chi") {
+          const { k } = state.params.chi;
+          return { xMin: 0, xMax: Math.min(96, Math.max(12, k + 5.5 * Math.sqrt(2 * k))), yMax: 1 };
+        }
+        if (state.mode === "f") {
+          const { d2 } = state.params.f;
+          return { xMin: 0, xMax: d2 <= 5 ? 14 : 8, yMax: 1 };
+        }
+        return { xMin: -7, xMax: 7, yMax: 1 };
+      }
+
+      function sampleDistribution(mode, xMin, xMax, count) {
+        const points = [];
+        for (let i = 0; i <= count; i += 1) {
+          const x = xMin + (xMax - xMin) * (i / count);
+          points.push({ x, y: density(mode, x) });
+        }
+        return points;
+      }
+
+      function density(mode, x) {
+        if (mode === "chi") {
+          if (x < 0) return 0;
+          const { k } = state.params.chi;
+          if (x === 0) return k === 2 ? 0.5 : k < 2 ? 4 : 0;
+          const logY = (k / 2 - 1) * Math.log(x) - x / 2 - (k / 2) * Math.log(2) - logGamma(k / 2);
+          return Math.exp(logY);
+        }
+        if (mode === "f") {
+          if (x <= 0) return 0;
+          const { d1, d2 } = state.params.f;
+          const a = d1 / 2;
+          const b = d2 / 2;
+          const logNumerator = a * Math.log(d1 / d2) + (a - 1) * Math.log(x);
+          const logDenominator = logBeta(a, b) + (a + b) * Math.log(1 + (d1 / d2) * x);
+          return Math.exp(logNumerator - logDenominator);
+        }
+        if (mode === "normal") {
+          return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+        }
+        const { nu } = state.params.t;
+        const logC = logGamma((nu + 1) / 2) - 0.5 * Math.log(nu * Math.PI) - logGamma(nu / 2);
+        return Math.exp(logC - ((nu + 1) / 2) * Math.log(1 + (x * x) / nu));
+      }
+
+      function render(now = performance.now()) {
+        const progress = clamp((now - state.transitionStart) / 260, 0, 1);
+        const ease = 1 - Math.pow(1 - progress, 3);
+        draw(interpolateCurves(state.previousCurves, state.targetCurves, ease));
+        requestAnimationFrame(render);
+      }
+
+      function draw(curves) {
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "rgba(3, 13, 22, 0.32)";
+        ctx.fillRect(0, 0, width, height);
+
+        const pad = {
+          left: 60,
+          right: 30,
+          top: 34,
+          bottom: 54,
+        };
+        const chartW = Math.max(1, width - pad.left - pad.right);
+        const chartH = Math.max(1, height - pad.top - pad.bottom);
+        const xToPx = (x) => pad.left + ((x - domain.xMin) / (domain.xMax - domain.xMin)) * chartW;
+        const yToPx = (y) => pad.top + chartH - (y / domain.yMax) * chartH;
+
+        drawGrid(pad, chartW, chartH, xToPx, yToPx);
+        drawAxes(pad, chartW, chartH);
+        curves.forEach((curve) => drawCurve(curve, xToPx, yToPx));
+        drawLegend(curves, pad);
+      }
+
+      function drawGrid(pad, chartW, chartH, xToPx, yToPx) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(174, 204, 220, 0.12)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 5]);
+        ctx.fillStyle = "#d8e8ef";
+        ctx.font = "13px ui-sans-serif, system-ui";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+
+        const xTicks = 8;
+        for (let i = 0; i <= xTicks; i += 1) {
+          const x = domain.xMin + ((domain.xMax - domain.xMin) * i) / xTicks;
+          const px = xToPx(x);
+          ctx.beginPath();
+          ctx.moveTo(px, pad.top);
+          ctx.lineTo(px, pad.top + chartH);
+          ctx.stroke();
+          ctx.fillText(formatTick(x), px, pad.top + chartH + 12);
+        }
+
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        const yTicks = 5;
+        for (let i = 0; i <= yTicks; i += 1) {
+          const y = (domain.yMax * i) / yTicks;
+          const py = yToPx(y);
+          ctx.beginPath();
+          ctx.moveTo(pad.left, py);
+          ctx.lineTo(pad.left + chartW, py);
+          ctx.stroke();
+          ctx.fillText(y.toFixed(2), pad.left - 12, py);
+        }
+        ctx.restore();
+      }
+
+      function drawAxes(pad, chartW, chartH) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(236, 247, 251, 0.72)";
+        ctx.fillStyle = "rgba(236, 247, 251, 0.86)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, pad.top + chartH);
+        ctx.lineTo(pad.left + chartW + 6, pad.top + chartH);
+        ctx.moveTo(pad.left, pad.top + chartH);
+        ctx.lineTo(pad.left, pad.top - 6);
+        ctx.stroke();
+        ctx.font = "italic 18px Georgia, serif";
+        ctx.fillText("x", pad.left + chartW + 14, pad.top + chartH + 2);
+        ctx.fillText("f(x)", pad.left - 30, pad.top - 14);
+        ctx.restore();
+      }
+
+      function drawCurve(curve, xToPx, yToPx) {
+        ctx.save();
+        ctx.strokeStyle = curve.color;
+        ctx.lineWidth = curve.mode === state.mode ? 3 : 2.4;
+        if (curve.dashed) ctx.setLineDash([10, 7]);
+        ctx.shadowColor = curve.color;
+        ctx.shadowBlur = curve.dashed ? 0 : curve.mode === state.mode ? 14 : 8;
+        ctx.beginPath();
+        curve.points.forEach((point, index) => {
+          const px = xToPx(point.x);
+          const py = yToPx(point.y);
+          if (index === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawLegend(curves, pad) {
+        const entries = state.overlay ? curves : curves.filter((curve) => curve.mode === state.mode || curve.mode === "normal");
+        ctx.save();
+        ctx.font = "700 13px ui-sans-serif, system-ui";
+        ctx.textBaseline = "middle";
+        let x = pad.left + 4;
+        const y = pad.top - 8;
+        entries.forEach((entry) => {
+          ctx.strokeStyle = entry.color;
+          ctx.lineWidth = 3;
+          ctx.setLineDash(entry.dashed ? [9, 6] : []);
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + 24, y);
+          ctx.stroke();
+          ctx.fillStyle = "#dceaf2";
+          ctx.fillText(entry.label, x + 32, y);
+          x += ctx.measureText(entry.label).width + 70;
+        });
+        ctx.restore();
+      }
+
+      function interpolateCurves(fromCurves, toCurves, t) {
+        if (!fromCurves.length || fromCurves.length !== toCurves.length) return toCurves;
+        return toCurves.map((curve, curveIndex) => {
+          const from = fromCurves[curveIndex]?.points?.length === curve.points.length ? fromCurves[curveIndex].points : curve.points;
+          return {
+            ...curve,
+            points: curve.points.map((point, pointIndex) => ({
+              x: point.x,
+              y: from[pointIndex].y + (point.y - from[pointIndex].y) * t,
+            })),
+          };
+        });
+      }
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = Math.max(1, Math.floor(rect.width));
+        height = Math.max(1, Math.floor(rect.height));
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      function formatDistributionLabel(mode) {
+        if (mode === "chi") return `χ²(k = ${state.params.chi.k})`;
+        if (mode === "f") return `F(d1 = ${state.params.f.d1}, d2 = ${state.params.f.d2})`;
+        return `t(ν = ${state.params.t.nu})`;
+      }
+
+      function sameParams(a, b) {
+        return Object.keys(b).every((key) => a[key] === b[key]);
+      }
+
+      function formatTick(value) {
+        if (Math.abs(value) < 0.0001) return "0";
+        return Math.abs(value) >= 10 ? String(Math.round(value)) : value.toFixed(1).replace(".0", "");
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function logBeta(a, b) {
+        return logGamma(a) + logGamma(b) - logGamma(a + b);
+      }
+
+      function logGamma(z) {
+        const coefficients = [
+          676.5203681218851,
+          -1259.1392167224028,
+          771.3234287776531,
+          -176.6150291621406,
+          12.507343278686905,
+          -0.13857109526572012,
+          9.984369578019571e-6,
+          1.5056327351493116e-7,
+        ];
+        if (z < 0.5) {
+          return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - logGamma(1 - z);
+        }
+        let x = 0.9999999999998099;
+        const shifted = z - 1;
+        for (let i = 0; i < coefficients.length; i += 1) {
+          x += coefficients[i] / (shifted + i + 1);
+        }
+        const t = shifted + coefficients.length - 0.5;
+        return 0.5 * Math.log(2 * Math.PI) + (shifted + 0.5) * Math.log(t) - t + Math.log(x);
+      }
+
+      resize();
+      syncUI();
+      updateCurves(false);
+      requestAnimationFrame(render);
+    </script>
+  </body>
+</html>

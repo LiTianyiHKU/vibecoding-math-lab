@@ -1,0 +1,20 @@
+{
+  "name": "vibecoding-math-lab",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build && cp dist/app.html dist/index.html && cp -R '线性代数' '概率论' '微积分' 'vendor' dist/ && cp shared-demo-theme.css dist/ && vite build --config vite.standalone.config.js",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "lucide-react": "^0.468.0",
+    "motion": "^12.23.25",
+    "ogl": "^1.0.11",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^8.0.16"
+  }
+}

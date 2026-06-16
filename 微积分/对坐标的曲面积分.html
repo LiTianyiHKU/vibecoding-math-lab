@@ -1,0 +1,1116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>对坐标的曲面积分</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #071018;
+      --bg-2: #0b1720;
+      --panel: rgba(12, 24, 33, 0.88);
+      --panel-2: rgba(17, 34, 45, 0.9);
+      --surface: #67e8a5;
+      --surface-2: #2dd4bf;
+      --projection: #5fa8ff;
+      --arrow: #f6b24b;
+      --normal: #f87171;
+      --ink: #edf8f6;
+      --muted: #9fb4bd;
+      --muted-2: #718894;
+      --line: rgba(185, 214, 221, 0.18);
+      --line-strong: rgba(196, 231, 232, 0.34);
+      --radius: 8px;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background:
+        linear-gradient(120deg, rgba(45, 212, 191, 0.1), transparent 28%),
+        linear-gradient(180deg, #071018 0%, #0b1720 58%, #071018 100%);
+      color: var(--ink);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    .app {
+      width: min(1740px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 20px 0 28px;
+    }
+
+    .top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      color: #f4fffd;
+      font-size: clamp(30px, 3.4vw, 52px);
+      line-height: 1.03;
+      letter-spacing: 0;
+    }
+
+    .intro {
+      margin: 9px 0 0;
+      max-width: 920px;
+      color: var(--muted);
+      font-size: clamp(14px, 1.25vw, 18px);
+      font-weight: 720;
+      line-height: 1.56;
+    }
+
+    .formula-chip {
+      min-width: 330px;
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(12, 24, 33, 0.76);
+      box-shadow: var(--shadow);
+      color: #d9fbf0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 15px;
+      line-height: 1.55;
+      white-space: nowrap;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(720px, 1fr) minmax(360px, 430px);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .stage,
+    .panel {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .stage {
+      position: relative;
+      min-height: 760px;
+    }
+
+    .stage-head {
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      z-index: 3;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      max-width: calc(100% - 32px);
+    }
+
+    .legend {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(7, 16, 24, 0.72);
+      color: #d7e9ea;
+      font-size: 12px;
+      font-weight: 850;
+      backdrop-filter: blur(12px);
+    }
+
+    .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--color);
+      box-shadow: 0 0 18px var(--color);
+    }
+
+    .swatch-group {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    #scene {
+      display: block;
+      width: 100%;
+      height: 760px;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
+        #0a141d;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #scene.dragging {
+      cursor: grabbing;
+    }
+
+    .hint {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      z-index: 3;
+      max-width: min(520px, calc(100% - 32px));
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(7, 16, 24, 0.74);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      line-height: 1.55;
+      backdrop-filter: blur(12px);
+    }
+
+    .panel {
+      padding: 16px;
+    }
+
+    .panel h2 {
+      margin: 0 0 14px;
+      color: #f5fffb;
+      font-size: 22px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    .control-group {
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .control-group:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .label-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 9px;
+      color: #dff9f2;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .value {
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--surface);
+    }
+
+    .segments {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .field-select {
+      width: 100%;
+      min-height: 39px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(7, 16, 24, 0.72);
+      color: #e9fff7;
+      padding: 0 10px;
+      font-weight: 850;
+      outline: none;
+    }
+
+    .segments button,
+    .reset,
+    .random-field {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .segments button.active {
+      border-color: rgba(103, 232, 165, 0.64);
+      background: rgba(103, 232, 165, 0.16);
+      color: #dffcef;
+    }
+
+    .random-field {
+      min-width: 72px;
+      color: #ffe7ba;
+      border-color: rgba(246, 178, 75, 0.38);
+      background: rgba(246, 178, 75, 0.09);
+    }
+
+    .toggles {
+      display: grid;
+      gap: 9px;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 40px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.035);
+      color: #dcecea;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .toggle input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--surface);
+    }
+
+    .readout {
+      display: grid;
+      gap: 9px;
+      margin-top: 2px;
+    }
+
+    .readout-line {
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr);
+      gap: 10px;
+      align-items: baseline;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(7, 16, 24, 0.45);
+      color: #dcecea;
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .readout-line span {
+      color: var(--muted-2);
+      font-weight: 900;
+    }
+
+    .math {
+      color: #f3fffb;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      overflow-wrap: anywhere;
+    }
+
+    .focus {
+      margin-top: 14px;
+      padding: 13px;
+      border: 1px solid rgba(103, 232, 165, 0.24);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(103, 232, 165, 0.09), rgba(95, 168, 255, 0.06));
+    }
+
+    .focus h3 {
+      margin: 0 0 8px;
+      color: #e9fff7;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    .focus p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 720;
+      line-height: 1.64;
+    }
+
+    .reset {
+      width: 100%;
+      margin-top: 12px;
+      color: #dffcef;
+      border-color: rgba(103, 232, 165, 0.38);
+      background: rgba(103, 232, 165, 0.1);
+    }
+
+    @media (max-width: 1180px) {
+      .top,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .formula-chip {
+        min-width: 0;
+        white-space: normal;
+      }
+
+      .stage,
+      #scene {
+        min-height: 620px;
+        height: 620px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .app {
+        width: min(100vw - 16px, 680px);
+        padding-top: 12px;
+      }
+
+      h1 {
+        font-size: 30px;
+      }
+
+      .stage,
+      #scene {
+        min-height: 510px;
+        height: 510px;
+      }
+
+      .segments {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .field-row {
+        grid-template-columns: 1fr;
+      }
+
+      .readout-line {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="top">
+      <div>
+        <h1>对坐标的曲面积分</h1>
+        <p class="intro">旋转曲面、打开三个坐标面投影，并观察向量场箭头穿过曲面时对通量的贡献。</p>
+      </div>
+      <div class="formula-chip">∫∫Σ P dy dz + Q dz dx + R dx dy<br />= ∫∫Σ F · n dS</div>
+    </header>
+
+    <section class="layout" aria-label="对坐标的曲面积分交互实验">
+      <div class="stage">
+        <div class="stage-head" aria-hidden="true">
+          <span class="legend"><i class="swatch" style="--color: var(--surface)"></i>曲面 Σ</span>
+          <span class="legend"><span class="swatch-group"><i class="swatch" style="--color: #ef4444"></i><i class="swatch" style="--color: #3b82f6"></i><i class="swatch" style="--color: #22c55e"></i></span>投影 xy / yz / xz</span>
+          <span class="legend"><i class="swatch" style="--color: var(--arrow)"></i>向量场 F</span>
+          <span class="legend"><i class="swatch" style="--color: var(--normal)"></i>法向 n</span>
+        </div>
+        <canvas id="scene" aria-label="三维坐标系、曲面、投影和向量场"></canvas>
+        <div class="hint">默认视角中，Y 轴水平向右，Z 轴竖直向上，X 轴朝屏幕外。按住画面拖动可沿用线性代数三维图的旋转手感。</div>
+      </div>
+
+      <aside class="panel" aria-label="交互控制">
+        <h2>曲面与投影控制</h2>
+
+        <div class="control-group">
+          <div class="label-row"><span>投影面</span><span class="value" id="projectionText">xy / yz / xz</span></div>
+          <div class="segments" id="projectionButtons">
+            <button type="button" data-plane="xy" class="active">xy</button>
+            <button type="button" data-plane="yz" class="active">yz</button>
+            <button type="button" data-plane="xz" class="active">xz</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="label-row"><label for="shape">曲面形状</label><span class="value" id="shapeValue">0.50</span></div>
+          <input id="shape" type="range" min="0" max="1" step="0.01" value="0.5" />
+        </div>
+
+        <div class="control-group">
+          <div class="label-row"><label for="fieldPreset">向量场</label><span class="value" id="fieldName">循环场</span></div>
+          <div class="field-row">
+            <select id="fieldPreset" class="field-select" aria-label="选择向量场">
+              <option value="cyclic">循环场 F=(y,z,x)</option>
+              <option value="radial">径向场 F=(x,y,z)</option>
+              <option value="swirl">旋转场 F=(-y,x,0.35z)</option>
+              <option value="vertical">竖直场 F=(0,0,z)</option>
+              <option value="saddle">鞍形场 F=(x,-y,z)</option>
+            </select>
+            <button type="button" class="random-field" id="randomField">随机</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="label-row"><label for="fieldStrength">向量强度</label><span class="value" id="strengthValue">1.00</span></div>
+          <input id="fieldStrength" type="range" min="0.45" max="1.8" step="0.01" value="1" />
+        </div>
+
+        <div class="control-group">
+          <div class="label-row"><label for="arrowDensity">箭头密度</label><span class="value" id="densityValue">6 × 6</span></div>
+          <input id="arrowDensity" type="range" min="4" max="9" step="1" value="6" />
+        </div>
+
+        <div class="control-group">
+          <div class="label-row"><label for="projectionOpacity">投影透明度</label><span class="value" id="opacityValue">0.42</span></div>
+          <input id="projectionOpacity" type="range" min="0.12" max="0.76" step="0.01" value="0.42" />
+        </div>
+
+        <div class="control-group">
+          <div class="toggles">
+            <label class="toggle">显示曲面法向量 <input id="showNormal" type="checkbox" checked /></label>
+          </div>
+          <button type="button" class="reset" id="resetView">重置视角</button>
+        </div>
+
+        <div class="control-group">
+          <div class="readout">
+            <div class="readout-line"><span>曲面</span><div class="math" id="surfaceReadout">z = 2.60 - 0.22(x-0.3)² - 0.18(y-0.3)²</div></div>
+            <div class="readout-line"><span>向量场</span><div class="math" id="fieldReadout">F(x,y,z) = (y, z, x)</div></div>
+            <div class="readout-line"><span>n dS</span><div class="math" id="normalReadout">(-zₓ, -zᵧ, 1) dx dy</div></div>
+            <div class="readout-line"><span>颜色</span><div class="math" id="fluxReadout">暖色箭头表示 F · n 为正</div></div>
+          </div>
+        </div>
+
+        <div class="focus">
+          <h3>观察重点</h3>
+          <p>对坐标的曲面积分把向量场分量分别投到三个坐标面上：P dy dz 看 yz 面影子，Q dz dx 看 xz 面影子，R dx dy 看 xy 面影子。三个影子的有向贡献合起来，就是向量场穿过曲面的通量。</p>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="../vendor/three.min.js"></script>
+  <script>
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setClearColor(0x0a141d, 1);
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x0a141d, 7, 16);
+
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+    camera.up.set(0, 0, 1);
+    const view = {
+      radius: 5.6,
+      yaw: 45,
+      pitch: 14,
+      target: new THREE.Vector3(1.15, 1.15, 1.02)
+    };
+
+    const state = {
+      projections: {
+        xy: true,
+        yz: true,
+        xz: true
+      },
+      shape: 0.5,
+      fieldPreset: 'cyclic',
+      strength: 1,
+      density: 6,
+      opacity: 0.42,
+      showNormal: true
+    };
+
+    const groups = {
+      axes: new THREE.Group(),
+      surface: new THREE.Group(),
+      projections: new THREE.Group(),
+      arrows: new THREE.Group(),
+      normal: new THREE.Group(),
+      labels: new THREE.Group()
+    };
+
+    Object.values(groups).forEach(group => scene.add(group));
+    let animatedArrows = [];
+
+    const lights = [
+      new THREE.AmbientLight(0xd9fff6, 1.7),
+      new THREE.DirectionalLight(0xffffff, 2.1),
+      new THREE.PointLight(0x67e8a5, 18, 12)
+    ];
+    lights[1].position.set(3.8, -4.2, 7);
+    lights[2].position.set(-2.8, 2.8, 3.8);
+    lights.forEach(light => scene.add(light));
+
+    const colors = {
+      axisX: 0x7dd3fc,
+      axisY: 0x67e8a5,
+      axisZ: 0xf6b24b,
+      surface: 0x67e8a5,
+      surfaceWire: 0xb9fff1,
+      projection: 0x5fa8ff,
+      arrow: 0xf6b24b,
+      arrowNegative: 0x7dd3fc,
+      normal: 0xf87171
+    };
+
+    const ui = {
+      projectionButtons: document.getElementById('projectionButtons'),
+      projectionText: document.getElementById('projectionText'),
+      shape: document.getElementById('shape'),
+      fieldPreset: document.getElementById('fieldPreset'),
+      randomField: document.getElementById('randomField'),
+      fieldName: document.getElementById('fieldName'),
+      fieldStrength: document.getElementById('fieldStrength'),
+      arrowDensity: document.getElementById('arrowDensity'),
+      projectionOpacity: document.getElementById('projectionOpacity'),
+      showNormal: document.getElementById('showNormal'),
+      resetView: document.getElementById('resetView'),
+      shapeValue: document.getElementById('shapeValue'),
+      strengthValue: document.getElementById('strengthValue'),
+      densityValue: document.getElementById('densityValue'),
+      opacityValue: document.getElementById('opacityValue'),
+      surfaceReadout: document.getElementById('surfaceReadout'),
+      fieldReadout: document.getElementById('fieldReadout'),
+      normalReadout: document.getElementById('normalReadout'),
+      fluxReadout: document.getElementById('fluxReadout')
+    };
+
+    const domain = {
+      xMin: 0.28,
+      xMax: 2.12,
+      yMin: 0.28,
+      yMax: 2.12
+    };
+
+    const fieldPresets = {
+      cyclic: {
+        name: '循环场',
+        formula: 'F(x,y,z) = (y, z, x)',
+        sample: (x, y, z) => new THREE.Vector3(y, z, x)
+      },
+      radial: {
+        name: '径向场',
+        formula: 'F(x,y,z) = (x, y, z)',
+        sample: (x, y, z) => new THREE.Vector3(x, y, z)
+      },
+      swirl: {
+        name: '旋转场',
+        formula: 'F(x,y,z) = (-y, x, 0.35z)',
+        sample: (x, y, z) => new THREE.Vector3(-y, x, 0.35 * z)
+      },
+      vertical: {
+        name: '竖直场',
+        formula: 'F(x,y,z) = (0, 0, z)',
+        sample: (x, y, z) => new THREE.Vector3(0, 0, z)
+      },
+      saddle: {
+        name: '鞍形场',
+        formula: 'F(x,y,z) = (x, -y, z)',
+        sample: (x, y, z) => new THREE.Vector3(x, -y, z)
+      }
+    };
+
+    const fieldKeys = Object.keys(fieldPresets);
+
+    function surfaceCoefficients() {
+      return {
+        a: 0.16 + state.shape * 0.16,
+        b: 0.12 + state.shape * 0.14,
+        tiltX: (state.shape - 0.5) * 0.2,
+        tiltY: (0.5 - state.shape) * 0.14,
+        base: 2.62,
+        x0: domain.xMin,
+        y0: domain.yMin,
+        cx: (domain.xMin + domain.xMax) / 2,
+        cy: (domain.yMin + domain.yMax) / 2
+      };
+    }
+
+    function zAt(x, y) {
+      const { a, b, tiltX, tiltY, base, x0, y0, cx, cy } = surfaceCoefficients();
+      return base - a * (x - x0) * (x - x0) - b * (y - y0) * (y - y0) + tiltX * (x - cx) + tiltY * (y - cy);
+    }
+
+    function derivatives(x, y) {
+      const { a, b, tiltX, tiltY, x0, y0 } = surfaceCoefficients();
+      return {
+        zx: -2 * a * (x - x0) + tiltX,
+        zy: -2 * b * (y - y0) + tiltY
+      };
+    }
+
+    function normalAt(x, y) {
+      const { zx, zy } = derivatives(x, y);
+      return new THREE.Vector3(-zx, -zy, 1).normalize();
+    }
+
+    function fieldAt(x, y, z) {
+      return fieldPresets[state.fieldPreset].sample(x, y, z);
+    }
+
+    function renderPoint(x, y, z) {
+      return new THREE.Vector3(x, y, z);
+    }
+
+    function renderVector(vector) {
+      return new THREE.Vector3(vector.x, vector.y, vector.z);
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function clearGroup(group) {
+      group.traverse(object => {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+          if (Array.isArray(object.material)) object.material.forEach(material => material.dispose());
+          else object.material.dispose();
+        }
+        if (object.texture) object.texture.dispose();
+      });
+      group.clear();
+    }
+
+    function makeTextSprite(text, color = '#edf8f6') {
+      const size = 128;
+      const textCanvas = document.createElement('canvas');
+      textCanvas.width = size;
+      textCanvas.height = size;
+      const ctx = textCanvas.getContext('2d');
+      ctx.clearRect(0, 0, size, size);
+      ctx.font = '900 54px Inter, Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = color;
+      ctx.shadowColor = 'rgba(0,0,0,0.7)';
+      ctx.shadowBlur = 10;
+      ctx.fillText(text, size / 2, size / 2);
+      const texture = new THREE.CanvasTexture(textCanvas);
+      const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(0.42, 0.42, 0.42);
+      return sprite;
+    }
+
+    function drawAxis(direction, color, label, position) {
+      const arrow = new THREE.ArrowHelper(direction.clone().normalize(), new THREE.Vector3(0, 0, 0), 2.25, color, 0.18, 0.09);
+      groups.axes.add(arrow);
+      const sprite = makeTextSprite(label, `#${color.toString(16).padStart(6, '0')}`);
+      sprite.position.copy(position);
+      groups.labels.add(sprite);
+    }
+
+    function buildAxes() {
+      clearGroup(groups.axes);
+      clearGroup(groups.labels);
+
+      const gridMaterial = new THREE.LineBasicMaterial({ color: 0x9fb4bd, transparent: true, opacity: 0.15 });
+      const lineGeometry = new THREE.BufferGeometry();
+      const vertices = [];
+      const axisMax = 2.7;
+      const zMax = 2.85;
+      for (let i = 0; i <= axisMax + 0.001; i += 0.45) {
+        vertices.push(0, i, 0, axisMax, i, 0, i, 0, 0, i, axisMax, 0);
+        vertices.push(0, 0, i, axisMax, 0, i, i, 0, 0, i, 0, zMax);
+        vertices.push(0, 0, i, 0, axisMax, i, 0, i, 0, 0, i, zMax);
+      }
+      lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      groups.axes.add(new THREE.LineSegments(lineGeometry, gridMaterial));
+
+      drawAxis(new THREE.Vector3(1, 0, 0), colors.axisX, 'x', new THREE.Vector3(3.0, 0, 0));
+      drawAxis(new THREE.Vector3(0, 1, 0), colors.axisY, 'y', new THREE.Vector3(0, 3.0, 0));
+      drawAxis(new THREE.Vector3(0, 0, 1), colors.axisZ, 'z', new THREE.Vector3(0, 0, 3.1));
+
+      const origin = makeTextSprite('0', '#9fb4bd');
+      origin.position.set(-0.12, -0.12, -0.1);
+      origin.scale.set(0.28, 0.28, 0.28);
+      groups.labels.add(origin);
+    }
+
+    function surfacePoint(x, y) {
+      return renderPoint(x, y, zAt(x, y));
+    }
+
+    function addSurface() {
+      clearGroup(groups.surface);
+
+      const segments = 46;
+      const positions = [];
+      const colorsArray = [];
+      const indices = [];
+
+      for (let j = 0; j <= segments; j += 1) {
+        const y = domain.yMin + (j / segments) * (domain.yMax - domain.yMin);
+        for (let i = 0; i <= segments; i += 1) {
+          const x = domain.xMin + (i / segments) * (domain.xMax - domain.xMin);
+          const z = zAt(x, y);
+          const point = renderPoint(x, y, z);
+          positions.push(point.x, point.y, point.z);
+          const flux = fieldAt(x, y, z).dot(normalAt(x, y));
+          const warm = THREE.MathUtils.clamp((flux + 1.2) / 2.8, 0, 1);
+          const c = new THREE.Color().lerpColors(new THREE.Color(0x2dd4bf), new THREE.Color(0xf8d66d), warm * 0.42);
+          colorsArray.push(c.r, c.g, c.b);
+        }
+      }
+
+      for (let j = 0; j < segments; j += 1) {
+        for (let i = 0; i < segments; i += 1) {
+          const a = j * (segments + 1) + i;
+          const b = a + 1;
+          const c = a + segments + 1;
+          const d = c + 1;
+          indices.push(a, c, b, b, c, d);
+        }
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colorsArray, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+
+      const material = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        side: THREE.DoubleSide,
+        roughness: 0.42,
+        metalness: 0.02,
+        transparent: true,
+        opacity: 0.78
+      });
+      groups.surface.add(new THREE.Mesh(geometry, material));
+
+      const wire = new THREE.WireframeGeometry(geometry);
+      groups.surface.add(new THREE.LineSegments(wire, new THREE.LineBasicMaterial({
+        color: colors.surfaceWire,
+        transparent: true,
+        opacity: 0.16
+      })));
+    }
+
+    function makeProjectionGeometry(plane) {
+      const segments = 24;
+      const positions = [];
+      const indices = [];
+
+      for (let j = 0; j <= segments; j += 1) {
+        const y = domain.yMin + (j / segments) * (domain.yMax - domain.yMin);
+        for (let i = 0; i <= segments; i += 1) {
+          const x = domain.xMin + (i / segments) * (domain.xMax - domain.xMin);
+          const z = zAt(x, y);
+          const point = plane === 'xy'
+            ? renderPoint(x, y, 0)
+            : plane === 'yz'
+              ? renderPoint(0, y, z)
+              : renderPoint(x, 0, z);
+          positions.push(point.x, point.y, point.z);
+        }
+      }
+
+      for (let j = 0; j < segments; j += 1) {
+        for (let i = 0; i < segments; i += 1) {
+          const a = j * (segments + 1) + i;
+          const b = a + 1;
+          const c = a + segments + 1;
+          const d = c + 1;
+          indices.push(a, c, b, b, c, d);
+        }
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+      return geometry;
+    }
+
+    function addProjections() {
+      clearGroup(groups.projections);
+      ['xy', 'yz', 'xz'].forEach(plane => {
+        const active = state.projections[plane];
+        if (!active) return;
+        const projectionColor = {
+          xy: 0xef4444,
+          yz: 0x3b82f6,
+          xz: 0x22c55e
+        }[plane];
+        const material = new THREE.MeshBasicMaterial({
+          color: projectionColor,
+          transparent: true,
+          opacity: state.opacity,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        });
+        const mesh = new THREE.Mesh(makeProjectionGeometry(plane), material);
+        mesh.renderOrder = -1;
+        groups.projections.add(mesh);
+      });
+    }
+
+    function addArrows() {
+      clearGroup(groups.arrows);
+      animatedArrows = [];
+      const count = state.density;
+      for (let j = 0; j < count; j += 1) {
+        for (let i = 0; i < count; i += 1) {
+          const insetX = (domain.xMax - domain.xMin) * 0.08;
+          const insetY = (domain.yMax - domain.yMin) * 0.08;
+          const x = domain.xMin + insetX + (i / Math.max(1, count - 1)) * (domain.xMax - domain.xMin - insetX * 2);
+          const y = domain.yMin + insetY + (j / Math.max(1, count - 1)) * (domain.yMax - domain.yMin - insetY * 2);
+          const z = zAt(x, y);
+          const vector = fieldAt(x, y, z);
+          const n = normalAt(x, y);
+          const flux = vector.dot(n);
+          const direction = renderVector(vector).normalize();
+          const surfaceLift = renderVector(n).multiplyScalar(0.18);
+          const origin = renderPoint(x, y, z + 0.04).add(surfaceLift);
+          const length = THREE.MathUtils.clamp(0.28 + Math.abs(flux) * 0.12 * state.strength, 0.24, 0.66);
+          const arrow = new THREE.ArrowHelper(
+            direction,
+            origin,
+            length,
+            flux >= 0 ? colors.arrow : colors.arrowNegative,
+            0.11,
+            0.052
+          );
+          arrow.cone.material.transparent = true;
+          arrow.cone.material.opacity = 0.66;
+          arrow.cone.material.depthTest = false;
+          arrow.cone.material.depthWrite = false;
+          arrow.cone.renderOrder = 20;
+          arrow.line.material.transparent = true;
+          arrow.line.material.opacity = 0.46;
+          arrow.line.material.depthTest = false;
+          arrow.line.material.depthWrite = false;
+          arrow.line.renderOrder = 20;
+          groups.arrows.add(arrow);
+          animatedArrows.push({
+            arrow,
+            origin: origin.clone(),
+            direction: direction.clone(),
+            phase: (i * 0.31 + j * 0.17) % 1,
+            speed: 0.006 + ((i + j) % 5) * 0.001,
+            travel: Math.max(0.18, length * 0.58)
+          });
+        }
+      }
+    }
+
+    function addNormal() {
+      clearGroup(groups.normal);
+      if (!state.showNormal) return;
+
+      const samples = [
+        [1.2, 1.2],
+        [1.75, 0.72],
+        [0.72, 1.72]
+      ];
+      samples.forEach(([x, y]) => {
+        const origin = surfacePoint(x, y).add(new THREE.Vector3(0, 0, 0.08));
+        const n = normalAt(x, y);
+        const arrow = new THREE.ArrowHelper(renderVector(n), origin, 0.52, colors.normal, 0.12, 0.055);
+        groups.normal.add(arrow);
+      });
+    }
+
+    function rebuild() {
+      addSurface();
+      addProjections();
+      addArrows();
+      addNormal();
+      updateReadout();
+    }
+
+    function updateReadout() {
+      const { a, b, tiltX, tiltY, base, x0, y0, cx, cy } = surfaceCoefficients();
+      ui.shapeValue.textContent = Number(state.shape).toFixed(2);
+      ui.strengthValue.textContent = Number(state.strength).toFixed(2);
+      ui.densityValue.textContent = `${state.density} × ${state.density}`;
+      ui.opacityValue.textContent = Number(state.opacity).toFixed(2);
+      const activeProjections = ['xy', 'yz', 'xz'].filter(plane => state.projections[plane]);
+      ui.projectionText.textContent = activeProjections.length ? activeProjections.join(' / ') : '不显示';
+      ui.fieldName.textContent = fieldPresets[state.fieldPreset].name;
+      ui.fieldReadout.textContent = fieldPresets[state.fieldPreset].formula;
+      ui.surfaceReadout.textContent = `z = ${base.toFixed(2)} - ${a.toFixed(2)}(x-${x0.toFixed(1)})² - ${b.toFixed(2)}(y-${y0.toFixed(1)})² ${tiltX >= 0 ? '+' : '-'} ${Math.abs(tiltX).toFixed(2)}(x-${cx.toFixed(1)}) ${tiltY >= 0 ? '+' : '-'} ${Math.abs(tiltY).toFixed(2)}(y-${cy.toFixed(1)})`;
+      ui.normalReadout.textContent = `(-zₓ, -zᵧ, 1) dx dy ≈ (${(-derivatives(1.25, 1.05).zx).toFixed(2)}, ${(-derivatives(1.25, 1.05).zy).toFixed(2)}, 1) dx dy`;
+      ui.fluxReadout.textContent = activeProjections.length
+        ? `${activeProjections.join('、')} 投影正在显示，可对照 P dy dz、Q dz dx、R dx dy`
+        : '当前隐藏所有投影，只观察曲面、法向和向量场';
+    }
+
+    function setCameraFromView() {
+      const yaw = view.yaw * Math.PI / 180;
+      const pitch = view.pitch * Math.PI / 180;
+      const x = view.radius * Math.cos(pitch) * Math.cos(yaw);
+      const y = view.radius * Math.cos(pitch) * Math.sin(yaw);
+      const z = view.radius * Math.sin(pitch);
+      camera.position.set(x, y, z).add(view.target);
+      camera.lookAt(view.target);
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(1, Math.floor(rect.width));
+      const height = Math.max(1, Math.floor(rect.height));
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
+
+    function resetView() {
+      view.radius = 5.6;
+      view.yaw = 45;
+      view.pitch = 14;
+      setCameraFromView();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      updateAnimatedArrows();
+      setCameraFromView();
+      renderer.render(scene, camera);
+    }
+
+    function updateAnimatedArrows() {
+      animatedArrows.forEach(item => {
+        item.phase = (item.phase + item.speed * state.strength) % 1;
+        const pulse = Math.sin(item.phase * Math.PI);
+        const offset = item.direction.clone().multiplyScalar(item.travel * item.phase);
+        item.arrow.position.copy(item.origin).add(offset);
+        item.arrow.cone.material.opacity = 0.42 + pulse * 0.32;
+        item.arrow.line.material.opacity = 0.22 + pulse * 0.22;
+      });
+    }
+
+    function attachControls() {
+      let dragging = false;
+      let lastX = 0;
+      let lastY = 0;
+
+      canvas.addEventListener('pointerdown', event => {
+        dragging = true;
+        lastX = event.clientX;
+        lastY = event.clientY;
+        canvas.classList.add('dragging');
+        canvas.setPointerCapture(event.pointerId);
+      });
+
+      canvas.addEventListener('pointermove', event => {
+        if (!dragging) return;
+        const dx = event.clientX - lastX;
+        const dy = event.clientY - lastY;
+        lastX = event.clientX;
+        lastY = event.clientY;
+        view.yaw = clamp(view.yaw + dx * 0.45, -180, 180);
+        view.pitch = clamp(view.pitch - dy * 0.35, -20, 80);
+      });
+
+      canvas.addEventListener('pointerup', event => {
+        dragging = false;
+        canvas.classList.remove('dragging');
+        canvas.releasePointerCapture(event.pointerId);
+      });
+
+      canvas.addEventListener('pointercancel', () => {
+        dragging = false;
+        canvas.classList.remove('dragging');
+      });
+
+      canvas.addEventListener('wheel', event => {
+        event.preventDefault();
+        view.radius = clamp(view.radius + event.deltaY * 0.003, 3.9, 8.4);
+      }, { passive: false });
+
+      canvas.addEventListener('dblclick', resetView);
+      ui.resetView.addEventListener('click', resetView);
+
+      ui.projectionButtons.addEventListener('click', event => {
+        const button = event.target.closest('button[data-plane]');
+        if (!button) return;
+        const plane = button.dataset.plane;
+        state.projections[plane] = !state.projections[plane];
+        button.classList.toggle('active', state.projections[plane]);
+        addProjections();
+        updateReadout();
+      });
+
+      ui.shape.addEventListener('input', event => {
+        state.shape = Number(event.target.value);
+        rebuild();
+      });
+
+      ui.fieldPreset.addEventListener('change', event => {
+        state.fieldPreset = event.target.value;
+        addSurface();
+        addArrows();
+        updateReadout();
+      });
+
+      ui.randomField.addEventListener('click', () => {
+        const nextKeys = fieldKeys.filter(key => key !== state.fieldPreset);
+        state.fieldPreset = nextKeys[Math.floor(Math.random() * nextKeys.length)];
+        ui.fieldPreset.value = state.fieldPreset;
+        addSurface();
+        addArrows();
+        updateReadout();
+      });
+
+      ui.fieldStrength.addEventListener('input', event => {
+        state.strength = Number(event.target.value);
+        addArrows();
+        updateReadout();
+      });
+
+      ui.arrowDensity.addEventListener('input', event => {
+        state.density = Number(event.target.value);
+        addArrows();
+        updateReadout();
+      });
+
+      ui.projectionOpacity.addEventListener('input', event => {
+        state.opacity = Number(event.target.value);
+        addProjections();
+        updateReadout();
+      });
+
+      ui.showNormal.addEventListener('change', event => {
+        state.showNormal = event.target.checked;
+        addNormal();
+      });
+
+      window.addEventListener('resize', resize);
+    }
+
+    buildAxes();
+    rebuild();
+    resetView();
+    resize();
+    attachControls();
+    animate();
+  </script>
+</body>
+</html>

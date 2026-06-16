@@ -1,0 +1,1074 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>曲线积分</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #061018;
+      --panel: rgba(13, 27, 39, 0.88);
+      --panel-2: rgba(18, 37, 50, 0.78);
+      --ink: #ecf9f7;
+      --muted: #9bb8b6;
+      --muted-2: #6e8788;
+      --line: rgba(157, 218, 213, 0.18);
+      --line-strong: rgba(157, 218, 213, 0.34);
+      --accent: #5df2bf;
+      --accent-2: #62d8ff;
+      --path: #ffbf47;
+      --negative: #ff6f9a;
+      --positive: #63ddff;
+      --shadow: 0 28px 78px rgba(0, 0, 0, 0.38);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 18% 6%, rgba(93, 242, 191, 0.18), transparent 30%),
+        radial-gradient(circle at 82% 18%, rgba(98, 216, 255, 0.12), transparent 31%),
+        linear-gradient(135deg, #061018 0%, #081721 52%, #07111a 100%);
+      color: var(--ink);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    .app {
+      width: min(1720px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 22px 0 30px;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 4vw, 58px);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    .formula-pill {
+      max-width: 520px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(8, 19, 29, 0.62);
+      color: #d7fffa;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: clamp(13px, 1.1vw, 17px);
+      font-weight: 800;
+      line-height: 1.35;
+      box-shadow: var(--shadow);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(640px, 1fr) minmax(320px, 380px);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .stage,
+    .rail-card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .stage {
+      min-height: 710px;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      height: min(76vh, 780px);
+      min-height: 650px;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.025), transparent),
+        #091722;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .work-readout {
+      position: absolute;
+      left: 18px;
+      top: 18px;
+      min-width: 178px;
+      padding: 12px 14px;
+      border: 1px solid rgba(93, 242, 191, 0.32);
+      border-radius: var(--radius);
+      background: rgba(4, 13, 19, 0.68);
+      backdrop-filter: blur(14px);
+    }
+
+    .work-readout span {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .work-readout strong {
+      color: var(--path);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: clamp(25px, 2.6vw, 38px);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 26px rgba(255, 191, 71, 0.28);
+    }
+
+    .legend {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      padding: 6px 10px;
+      border: 1px solid rgba(157, 218, 213, 0.2);
+      border-radius: 7px;
+      background: rgba(4, 13, 19, 0.54);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      backdrop-filter: blur(10px);
+    }
+
+    .swatch {
+      width: 18px;
+      height: 4px;
+      border-radius: 99px;
+      background: currentColor;
+      box-shadow: 0 0 16px currentColor;
+    }
+
+    .rail {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .rail-card {
+      padding: 14px;
+    }
+
+    .rail-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .mini-label {
+      color: var(--muted-2);
+      font-size: 12px;
+      font-weight: 820;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .button-grid.path-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .mode-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .choice,
+    .toggle-button {
+      min-height: 40px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.055);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 850;
+      transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+    }
+
+    .choice:hover,
+    .toggle-button:hover {
+      border-color: rgba(93, 242, 191, 0.58);
+      background: rgba(93, 242, 191, 0.08);
+    }
+
+    .choice.active,
+    .toggle-button.active {
+      border-color: rgba(93, 242, 191, 0.84);
+      background: linear-gradient(135deg, rgba(19, 177, 136, 0.95), rgba(45, 191, 236, 0.82));
+      color: #031016;
+      box-shadow: 0 13px 28px rgba(42, 201, 173, 0.22);
+    }
+
+    #randomFieldButton {
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    .field-inputs {
+      display: grid;
+      gap: 8px;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input-row label {
+      color: var(--muted);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    input[type="text"],
+    input[type="range"] {
+      width: 100%;
+    }
+
+    input[type="text"] {
+      min-height: 40px;
+      padding: 0 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: rgba(4, 13, 19, 0.5);
+      color: var(--ink);
+      outline: none;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    input[type="text"]:focus {
+      border-color: rgba(93, 242, 191, 0.82);
+      box-shadow: 0 0 0 3px rgba(93, 242, 191, 0.13);
+    }
+
+    .hint {
+      min-height: 18px;
+      margin-top: 8px;
+      color: #ff9ab7;
+      font-size: 12px;
+      font-weight: 760;
+      line-height: 1.4;
+    }
+
+    .play-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .slider-row {
+      display: grid;
+      gap: 8px;
+      padding: 10px 10px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(4, 13, 19, 0.28);
+    }
+
+    .slider-row label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 820;
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+    }
+
+    .status-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      border-top: 1px solid var(--line);
+      background: rgba(4, 13, 19, 0.3);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    @media (max-width: 1020px) {
+      .top {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .formula-pill {
+        max-width: none;
+        width: 100%;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .stage {
+        min-height: 560px;
+      }
+
+      .canvas-wrap {
+        height: 62vh;
+        min-height: 520px;
+      }
+
+      .rail {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+      }
+
+    }
+
+    @media (max-width: 720px) {
+      .app {
+        width: min(100vw - 20px, 1720px);
+        padding-top: 16px;
+      }
+
+      .rail {
+        grid-template-columns: 1fr;
+      }
+
+      .canvas-wrap {
+        min-height: 460px;
+        height: 58vh;
+      }
+
+      .work-readout {
+        left: 12px;
+        top: 12px;
+        min-width: 148px;
+      }
+
+      .legend {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+      }
+
+      .legend-item {
+        min-height: 26px;
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="top">
+      <h1>曲线积分</h1>
+      <div class="formula-pill">坐标曲线积分公式：∫ P dx + Q dy</div>
+    </header>
+
+    <section class="layout" aria-label="曲线积分互动演示">
+      <div class="stage">
+        <div class="canvas-wrap">
+          <canvas id="fieldCanvas" aria-label="二维向量场、轨迹和做功动画"></canvas>
+          <div class="work-readout">
+            <span>做功</span>
+            <strong id="workValue">0.000</strong>
+          </div>
+          <div class="legend">
+            <span class="legend-item" style="color: var(--accent)"><span class="swatch"></span>向量场 F=(P,Q)</span>
+            <span class="legend-item" style="color: var(--path)"><span class="swatch"></span>轨迹 C</span>
+            <span class="legend-item" style="color: var(--negative)"><span class="swatch"></span>负做功</span>
+          </div>
+        </div>
+        <div class="status-line">
+          <span id="fieldLabel">旋转场 F=(-y,x)</span>
+          <span id="pathLabel">轨迹 C：闭环 · 基础</span>
+        </div>
+      </div>
+
+      <aside class="rail" aria-label="控制面板">
+        <section class="rail-card">
+          <div class="rail-head">
+            <h2>向量场 F=(P,Q)</h2>
+            <span class="mini-label">可随机</span>
+          </div>
+          <div class="button-grid" id="fieldButtons">
+            <button class="choice active" type="button" data-field="rotate">旋转</button>
+            <button class="choice" type="button" data-field="source">源汇</button>
+            <button class="choice" type="button" data-field="saddle">鞍点</button>
+            <button class="choice" type="button" data-field="shear">剪切</button>
+          </div>
+          <button class="toggle-button" id="randomFieldButton" type="button">随机</button>
+          <div class="field-inputs">
+            <div class="input-row">
+              <label for="pInput">P(x,y)</label>
+              <input id="pInput" type="text" value="-y" autocomplete="off" spellcheck="false" />
+            </div>
+            <div class="input-row">
+              <label for="qInput">Q(x,y)</label>
+              <input id="qInput" type="text" value="x" autocomplete="off" spellcheck="false" />
+            </div>
+          </div>
+          <div class="hint" id="formulaHint" aria-live="polite"></div>
+        </section>
+
+        <section class="rail-card">
+          <div class="rail-head">
+            <h2>轨迹 C</h2>
+            <span class="mini-label" id="pathModeLabel">闭合路径</span>
+          </div>
+          <div class="mode-row" id="pathModeButtons">
+            <button class="choice active" type="button" data-mode="closed">闭环</button>
+            <button class="choice" type="button" data-mode="open">非闭路径</button>
+          </div>
+          <div class="button-grid path-grid" id="pathButtons">
+            <button class="choice active" type="button" data-path="base">基础</button>
+            <button class="choice" type="button" data-path="stretch">拉伸</button>
+            <button class="choice" type="button" data-path="corner">折线</button>
+            <button class="choice" type="button" data-path="wave">波浪</button>
+          </div>
+          <div class="play-row">
+            <button class="toggle-button active" id="playButton" type="button">暂停</button>
+            <button class="toggle-button" id="randomPathButton" type="button">随机</button>
+          </div>
+          <div class="slider-row">
+            <label for="progressInput"><span>进度</span><span id="progressLabel">0%</span></label>
+            <input id="progressInput" type="range" min="0" max="1000" step="1" value="0" />
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const fieldCanvas = document.getElementById('fieldCanvas');
+    const fctx = fieldCanvas.getContext('2d');
+    const fieldLayer = document.createElement('canvas');
+    const fieldLayerCtx = fieldLayer.getContext('2d');
+
+    const workValue = document.getElementById('workValue');
+    const fieldLabel = document.getElementById('fieldLabel');
+    const pathLabel = document.getElementById('pathLabel');
+    const pathModeLabel = document.getElementById('pathModeLabel');
+    const formulaHint = document.getElementById('formulaHint');
+    const pInput = document.getElementById('pInput');
+    const qInput = document.getElementById('qInput');
+    const playButton = document.getElementById('playButton');
+    const randomFieldButton = document.getElementById('randomFieldButton');
+    const randomPathButton = document.getElementById('randomPathButton');
+    const progressInput = document.getElementById('progressInput');
+    const progressLabel = document.getElementById('progressLabel');
+
+    const fieldPresets = {
+      rotate: { name: '旋转场 F=(-y,x)', p: '-y', q: 'x' },
+      source: { name: '源汇场 F=(x,y)', p: 'x', q: 'y' },
+      saddle: { name: '鞍点场 F=(x,-y)', p: 'x', q: '-y' },
+      shear: { name: '剪切场 F=(y,0)', p: 'y', q: '0' }
+    };
+
+    const pathVariantNames = {
+      base: '基础',
+      stretch: '拉伸',
+      corner: '折线',
+      wave: '波浪'
+    };
+
+    const pathModeNames = {
+      closed: '闭环',
+      open: '非闭路径'
+    };
+
+    const state = {
+      fieldKey: 'rotate',
+      pathMode: 'closed',
+      pathKey: 'base',
+      playing: true,
+      progress: 0,
+      lastTime: performance.now(),
+      morphStart: 0,
+      morphDuration: 1100,
+      morphing: false,
+      currentShape: makeShape('closed', 'base'),
+      fromShape: makeShape('closed', 'base'),
+      targetShape: makeShape('closed', 'base'),
+      field: {
+        p: compileExpression('-y'),
+        q: compileExpression('x')
+      },
+      lastGood: { p: '-y', q: 'x' }
+    };
+
+    let fieldSize = { width: 1, height: 1, dpr: 1 };
+    let fieldLayerDirty = true;
+    let pathCache = { points: [], segments: [], stable: false };
+    let pathCacheDirty = true;
+    let lastWorkText = '';
+    let lastProgressText = '';
+    let frameDirty = true;
+
+    function compileExpression(source) {
+      const raw = String(source || '0').trim();
+      if (!raw) throw new Error('表达式不能为空');
+      if (!/^[0-9A-Za-z_+\-*/().^\s]+$/.test(raw)) throw new Error('只支持数字、x、y、函数和四则运算');
+      const allowed = new Set(['x', 'y', 'sin', 'cos', 'tan', 'sqrt', 'abs', 'exp', 'log', 'PI', 'E']);
+      const names = raw.match(/[A-Za-z_]+/g) || [];
+      for (const name of names) {
+        if (!allowed.has(name)) throw new Error(`暂不支持 ${name}`);
+      }
+      const js = raw.replace(/\^/g, '**');
+      const fn = new Function(
+        'x',
+        'y',
+        '"use strict"; const {sin,cos,tan,sqrt,abs,exp,log,PI,E}=Math; return (' + js + ');'
+      );
+      for (const point of [[0, 0], [1, -1], [-0.7, 1.2]]) {
+        const value = fn(point[0], point[1]);
+        if (!Number.isFinite(value)) throw new Error('表达式在常用点上不是有限数');
+      }
+      return (x, y) => {
+        const value = fn(x, y);
+        return Number.isFinite(value) ? value : 0;
+      };
+    }
+
+    function tryUpdateField() {
+      try {
+        const p = compileExpression(pInput.value);
+        const q = compileExpression(qInput.value);
+        state.field = { p, q };
+        state.lastGood = { p: pInput.value, q: qInput.value };
+        formulaHint.textContent = '';
+        fieldLabel.textContent = `F=(${pInput.value}, ${qInput.value})`;
+        fieldLayerDirty = true;
+        pathCacheDirty = true;
+        frameDirty = true;
+      } catch (error) {
+        formulaHint.textContent = error.message;
+      }
+    }
+
+    function randomFieldExpression() {
+      const terms = ['x', 'y', '-x', '-y', 'sin(x)', 'sin(y)', 'cos(x)', 'cos(y)', '0.5*x', '0.5*y'];
+      const mix = [
+        () => [terms[Math.floor(Math.random() * terms.length)], terms[Math.floor(Math.random() * terms.length)]],
+        () => [`${pick(['x', '-x', 'y', '-y'])} + ${pick(['sin(y)', 'cos(y)', '0.4*y'])}`, `${pick(['y', '-y', 'x', '-x'])} + ${pick(['sin(x)', 'cos(x)', '0.4*x'])}`],
+        () => [`${pick(['-y', 'y'])} + ${randomCoeff()}*x`, `${pick(['x', '-x'])} + ${randomCoeff()}*y`]
+      ];
+      return mix[Math.floor(Math.random() * mix.length)]();
+    }
+
+    function pick(items) {
+      return items[Math.floor(Math.random() * items.length)];
+    }
+
+    function randomCoeff() {
+      return (Math.round((Math.random() * 1.6 - 0.8) * 10) / 10).toFixed(1);
+    }
+
+    function makeShape(mode, kind) {
+      const jitter = () => (Math.random() - 0.5) * 0.22;
+      return {
+        mode,
+        kind,
+        cx: jitter() * 0.6,
+        cy: jitter() * 0.5,
+        rx: 1.38 + Math.random() * 0.28,
+        ry: 1.08 + Math.random() * 0.28,
+        phase: Math.random() * Math.PI * 2,
+        wave: 0.08 + Math.random() * 0.1,
+        tilt: (Math.random() - 0.5) * 0.7
+      };
+    }
+
+    function pointOnShape(shape, t) {
+      if (shape.mode === 'open') {
+        const u = t * 2 - 1;
+        const wobble = Math.sin(t * Math.PI);
+        if (shape.kind === 'stretch') {
+          return {
+            x: shape.cx + u * shape.rx * 1.08,
+            y: shape.cy + Math.sin(t * Math.PI * 1.15 + shape.phase) * shape.ry * 0.72
+          };
+        }
+        if (shape.kind === 'corner') {
+          const bend = u < -0.25 ? -0.5 : u < 0.32 ? 0.24 : -0.18;
+          return {
+            x: shape.cx + u * shape.rx * 1.05,
+            y: shape.cy + (bend + u * 0.16) * shape.ry
+          };
+        }
+        if (shape.kind === 'wave') {
+          return {
+            x: shape.cx + u * shape.rx * 1.12,
+            y: shape.cy + Math.sin(t * Math.PI * 3.2 + shape.phase) * shape.ry * 0.42 * wobble
+          };
+        }
+        return {
+          x: shape.cx + u * shape.rx * 1.06,
+          y: shape.cy + (u * shape.tilt + Math.sin(t * Math.PI) * 0.28) * shape.ry
+        };
+      }
+
+      const angle = Math.PI * 2 * t;
+      const c = Math.cos(angle);
+      const s = Math.sin(angle);
+      if (shape.kind === 'stretch') {
+        return {
+          x: shape.cx + c * shape.rx * 1.06,
+          y: shape.cy + s * shape.ry * 0.78
+        };
+      }
+      if (shape.kind === 'corner') {
+        const power = 0.34;
+        return {
+          x: shape.cx + Math.sign(c) * Math.pow(Math.abs(c), power) * shape.rx,
+          y: shape.cy + Math.sign(s) * Math.pow(Math.abs(s), power) * shape.ry
+        };
+      }
+      if (shape.kind === 'wave') {
+        const ripple = 1 + shape.wave * Math.sin(5 * angle + shape.phase) + 0.05 * Math.cos(3 * angle - shape.phase);
+        return {
+          x: shape.cx + c * shape.rx * ripple,
+          y: shape.cy + s * shape.ry * ripple
+        };
+      }
+      return {
+        x: shape.cx + c * shape.rx * 0.95,
+        y: shape.cy + s * shape.rx * 0.95
+      };
+    }
+
+    function easeInOut(t) {
+      return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
+
+    function samplePath(now) {
+      const count = 240;
+      const points = [];
+      let blend = 1;
+      if (state.morphing) {
+        blend = Math.min(1, (now - state.morphStart) / state.morphDuration);
+        if (blend >= 1) {
+          state.morphing = false;
+          state.currentShape = state.targetShape;
+        }
+      }
+      const k = easeInOut(blend);
+      for (let i = 0; i < count; i += 1) {
+        const t = i / count;
+        const a = state.morphing ? pointOnShape(state.fromShape, t) : pointOnShape(state.currentShape, t);
+        const b = state.morphing ? pointOnShape(state.targetShape, t) : a;
+        points.push({
+          x: a.x + (b.x - a.x) * k,
+          y: a.y + (b.y - a.y) * k
+        });
+      }
+      return points;
+    }
+
+    function startMorph(kind, auto = false) {
+      const now = performance.now();
+      state.pathKey = kind;
+      state.fromShape = state.morphing ? shapeAtCurrentMorph(now) : state.currentShape;
+      state.targetShape = makeShape(state.pathMode, kind);
+      state.morphStart = now;
+      state.morphing = true;
+      pathCacheDirty = true;
+      frameDirty = true;
+      pathLabel.textContent = `轨迹 C：${pathModeNames[state.pathMode]} · ${pathVariantNames[kind]}${auto ? ' · 随机' : ''}`;
+      document.querySelectorAll('[data-path]').forEach(button => {
+        button.classList.toggle('active', button.dataset.path === kind);
+      });
+    }
+
+    function shapeAtCurrentMorph(now) {
+      const blend = Math.min(1, (now - state.morphStart) / state.morphDuration);
+      const k = easeInOut(blend);
+      const merged = { ...state.targetShape };
+      for (const key of ['cx', 'cy', 'rx', 'ry', 'phase', 'wave', 'tilt']) {
+        merged[key] = state.fromShape[key] + (state.targetShape[key] - state.fromShape[key]) * k;
+      }
+      return merged;
+    }
+
+    function fieldAt(x, y) {
+      return {
+        x: state.field.p(x, y),
+        y: state.field.q(x, y)
+      };
+    }
+
+    function computeSegments(points) {
+      let total = 0;
+      const segments = [];
+      const limit = state.pathMode === 'closed' ? points.length : points.length - 1;
+      for (let i = 0; i < limit; i += 1) {
+        const a = points[i];
+        const b = state.pathMode === 'closed' ? points[(i + 1) % points.length] : points[i + 1];
+        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const f = fieldAt(mid.x, mid.y);
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const work = f.x * dx + f.y * dy;
+        total += work;
+        segments.push({ a, b, work });
+      }
+      return { total, segments };
+    }
+
+    function getPathData(now) {
+      if (!pathCacheDirty && !state.morphing) return pathCache;
+      const points = samplePath(now);
+      const segments = computeSegments(points).segments;
+      pathCache = { points, segments, stable: !state.morphing };
+      pathCacheDirty = state.morphing;
+      return pathCache;
+    }
+
+    function computeCumulativeWork(segments, progress) {
+      if (!segments.length) return 0;
+      const safeProgress = Number.isFinite(progress) ? progress : 0;
+      const clamped = Math.min(0.999999, Math.max(0, safeProgress));
+      const exact = clamped * segments.length;
+      const whole = Math.floor(exact);
+      const partial = exact - whole;
+      let total = 0;
+      for (let i = 0; i < whole; i += 1) {
+        total += segments[i].work;
+      }
+      if (whole < segments.length) {
+        total += segments[whole].work * partial;
+      }
+      return total;
+    }
+
+    function resizeCanvas(canvas, ctx, target) {
+      const rect = canvas.getBoundingClientRect();
+      target.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      target.width = Math.max(1, Math.floor(rect.width));
+      target.height = Math.max(1, Math.floor(rect.height));
+      canvas.width = Math.floor(target.width * target.dpr);
+      canvas.height = Math.floor(target.height * target.dpr);
+      ctx.setTransform(target.dpr, 0, 0, target.dpr, 0, 0);
+    }
+
+    function resizeFieldLayer() {
+      fieldLayer.width = fieldCanvas.width;
+      fieldLayer.height = fieldCanvas.height;
+      fieldLayerCtx.setTransform(fieldSize.dpr, 0, 0, fieldSize.dpr, 0, 0);
+      fieldLayerDirty = true;
+    }
+
+    function worldToField(point) {
+      const scale = Math.min(fieldSize.width, fieldSize.height) / 5.7;
+      return {
+        x: fieldSize.width / 2 + point.x * scale,
+        y: fieldSize.height / 2 - point.y * scale
+      };
+    }
+
+    function fieldToWorld(x, y) {
+      const scale = Math.min(fieldSize.width, fieldSize.height) / 5.7;
+      return {
+        x: (x - fieldSize.width / 2) / scale,
+        y: (fieldSize.height / 2 - y) / scale
+      };
+    }
+
+    function drawArrow(ctx, x1, y1, x2, y2, color, width = 1.7) {
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const len = Math.hypot(x2 - x1, y2 - y1);
+      if (len < 2) return;
+      const head = Math.min(10, Math.max(5, len * 0.34));
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - head * Math.cos(angle - 0.48), y2 - head * Math.sin(angle - 0.48));
+      ctx.lineTo(x2 - head * Math.cos(angle + 0.48), y2 - head * Math.sin(angle + 0.48));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawFieldGrid(ctx) {
+      ctx.clearRect(0, 0, fieldSize.width, fieldSize.height);
+      const step = 42;
+      ctx.strokeStyle = 'rgba(236, 249, 247, 0.06)';
+      ctx.lineWidth = 1;
+      for (let x = fieldSize.width / 2 % step; x <= fieldSize.width; x += step) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, fieldSize.height);
+        ctx.stroke();
+      }
+      for (let y = fieldSize.height / 2 % step; y <= fieldSize.height; y += step) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(fieldSize.width, y);
+        ctx.stroke();
+      }
+
+      const origin = worldToField({ x: 0, y: 0 });
+      ctx.strokeStyle = 'rgba(236, 249, 247, 0.22)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, origin.y);
+      ctx.lineTo(fieldSize.width, origin.y);
+      ctx.moveTo(origin.x, 0);
+      ctx.lineTo(origin.x, fieldSize.height);
+      ctx.stroke();
+
+      const arrowGap = Math.max(42, Math.min(60, fieldSize.width / 15));
+      for (let sy = arrowGap * 0.72; sy < fieldSize.height; sy += arrowGap) {
+        for (let sx = arrowGap * 0.72; sx < fieldSize.width; sx += arrowGap) {
+          const p = fieldToWorld(sx, sy);
+          const f = fieldAt(p.x, p.y);
+          const mag = Math.hypot(f.x, f.y);
+          if (!Number.isFinite(mag) || mag < 0.001) continue;
+          const length = Math.min(28, 10 + mag * 5.8);
+          const dx = (f.x / mag) * length;
+          const dy = (-f.y / mag) * length;
+          const alpha = Math.min(0.78, 0.2 + mag * 0.14);
+          drawArrow(ctx, sx - dx * 0.42, sy - dy * 0.42, sx + dx * 0.42, sy + dy * 0.42, `rgba(93, 242, 191, ${alpha})`, 1.35);
+        }
+      }
+    }
+
+    function drawMain(now) {
+      const { points, segments } = getPathData(now);
+      const safeProgress = Number.isFinite(state.progress) ? state.progress : 0;
+      const workText = computeCumulativeWork(segments, safeProgress).toFixed(3);
+      if (workText !== lastWorkText) {
+        workValue.textContent = workText;
+        lastWorkText = workText;
+      }
+
+      if (fieldLayerDirty) {
+        drawFieldGrid(fieldLayerCtx);
+        fieldLayerDirty = false;
+      }
+
+      fctx.clearRect(0, 0, fieldSize.width, fieldSize.height);
+      fctx.drawImage(fieldLayer, 0, 0, fieldSize.width, fieldSize.height);
+
+      fctx.save();
+      fctx.shadowBlur = 22;
+      fctx.shadowColor = 'rgba(255, 191, 71, 0.46)';
+      for (const segment of segments) {
+        const a = worldToField(segment.a);
+        const b = worldToField(segment.b);
+        const intensity = Math.min(1, Math.abs(segment.work) * 5.5);
+        fctx.strokeStyle = segment.work >= 0
+          ? `rgba(255, 191, 71, ${0.42 + intensity * 0.48})`
+          : `rgba(255, 111, 154, ${0.42 + intensity * 0.5})`;
+        fctx.lineWidth = 4.2;
+        fctx.lineCap = 'round';
+        fctx.beginPath();
+        fctx.moveTo(a.x, a.y);
+        fctx.lineTo(b.x, b.y);
+        fctx.stroke();
+      }
+      fctx.restore();
+
+      for (let i = 0; i < points.length; i += 20) {
+        const a = worldToField(points[i]);
+        const nextIndex = state.pathMode === 'closed' ? (i + 2) % points.length : Math.min(points.length - 1, i + 2);
+        const b = worldToField(points[nextIndex]);
+        drawArrow(fctx, a.x, a.y, b.x, b.y, 'rgba(255, 232, 166, 0.82)', 1.4);
+      }
+
+      const markerIndex = Math.min(points.length - 1, Math.max(0, Math.floor(safeProgress * (points.length - 1))));
+      const marker = worldToField(points[markerIndex]);
+      const tangentIndex = state.pathMode === 'closed' ? (markerIndex + 3) % points.length : Math.min(points.length - 1, markerIndex + 3);
+      const tangent = worldToField(points[tangentIndex]);
+      const gradient = fctx.createRadialGradient(marker.x, marker.y, 0, marker.x, marker.y, 34);
+      gradient.addColorStop(0, 'rgba(255, 191, 71, 0.54)');
+      gradient.addColorStop(1, 'rgba(255, 191, 71, 0)');
+      fctx.fillStyle = gradient;
+      fctx.beginPath();
+      fctx.arc(marker.x, marker.y, 34, 0, Math.PI * 2);
+      fctx.fill();
+      fctx.fillStyle = '#ffcf68';
+      fctx.strokeStyle = 'rgba(5, 12, 18, 0.86)';
+      fctx.lineWidth = 4;
+      fctx.beginPath();
+      fctx.arc(marker.x, marker.y, 9, 0, Math.PI * 2);
+      fctx.fill();
+      fctx.stroke();
+      drawArrow(fctx, marker.x, marker.y, tangent.x, tangent.y, 'rgba(255, 232, 166, 0.9)', 2);
+    }
+
+    function resizeAll() {
+      resizeCanvas(fieldCanvas, fctx, fieldSize);
+      resizeFieldLayer();
+      pathCacheDirty = true;
+      frameDirty = true;
+    }
+
+    function randomPathKind() {
+      const keys = Object.keys(pathVariantNames).filter(key => key !== state.pathKey);
+      return keys[Math.floor(Math.random() * keys.length)];
+    }
+
+    function animate(now) {
+      const dt = Math.min(50, now - state.lastTime);
+      state.lastTime = now;
+      if (state.playing) {
+        state.progress = (state.progress + dt / 5200) % 1;
+        const progressValue = String(Math.round(state.progress * 1000));
+        const progressText = `${Math.round(state.progress * 100)}%`;
+        if (progressInput.value !== progressValue) progressInput.value = progressValue;
+        if (progressText !== lastProgressText) {
+          progressLabel.textContent = progressText;
+          lastProgressText = progressText;
+        }
+        frameDirty = true;
+      }
+      if (state.morphing) {
+        frameDirty = true;
+      }
+      if (frameDirty) {
+        drawMain(now);
+        frameDirty = false;
+      }
+      requestAnimationFrame(animate);
+    }
+
+    document.getElementById('fieldButtons').addEventListener('click', event => {
+      const button = event.target.closest('[data-field]');
+      if (!button) return;
+      const preset = fieldPresets[button.dataset.field];
+      state.fieldKey = button.dataset.field;
+      pInput.value = preset.p;
+      qInput.value = preset.q;
+      tryUpdateField();
+      fieldLabel.textContent = preset.name;
+      document.querySelectorAll('[data-field]').forEach(item => item.classList.toggle('active', item === button));
+    });
+
+    randomFieldButton.addEventListener('click', () => {
+      const [p, q] = randomFieldExpression();
+      state.fieldKey = 'random';
+      pInput.value = p;
+      qInput.value = q;
+      tryUpdateField();
+      fieldLabel.textContent = `随机场 F=(${p}, ${q})`;
+      document.querySelectorAll('[data-field]').forEach(item => item.classList.remove('active'));
+    });
+
+    document.getElementById('pathModeButtons').addEventListener('click', event => {
+      const button = event.target.closest('[data-mode]');
+      if (!button) return;
+      state.pathMode = button.dataset.mode;
+      pathModeLabel.textContent = state.pathMode === 'closed' ? '闭合路径' : '非闭路径';
+      document.querySelectorAll('[data-mode]').forEach(item => item.classList.toggle('active', item === button));
+      startMorph(state.pathKey, false);
+    });
+
+    document.getElementById('pathButtons').addEventListener('click', event => {
+      const button = event.target.closest('[data-path]');
+      if (!button) return;
+      startMorph(button.dataset.path, false);
+    });
+
+    pInput.addEventListener('input', tryUpdateField);
+    qInput.addEventListener('input', tryUpdateField);
+
+    playButton.addEventListener('click', () => {
+      state.playing = !state.playing;
+      playButton.classList.toggle('active', state.playing);
+      playButton.textContent = state.playing ? '暂停' : '播放';
+    });
+
+    randomPathButton.addEventListener('click', () => {
+      if (Math.random() > 0.45) {
+        state.pathMode = state.pathMode === 'closed' ? 'open' : 'closed';
+        pathModeLabel.textContent = state.pathMode === 'closed' ? '闭合路径' : '非闭路径';
+        document.querySelectorAll('[data-mode]').forEach(item => item.classList.toggle('active', item.dataset.mode === state.pathMode));
+      }
+      startMorph(randomPathKind(), true);
+    });
+
+    progressInput.addEventListener('input', () => {
+      const raw = Number(progressInput.value);
+      state.progress = Number.isFinite(raw) ? Math.min(1, Math.max(0, raw / 1000)) : 0;
+      const progressText = `${Math.round(state.progress * 100)}%`;
+      progressLabel.textContent = progressText;
+      lastProgressText = progressText;
+      frameDirty = true;
+    });
+
+    window.addEventListener('resize', resizeAll);
+    resizeAll();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

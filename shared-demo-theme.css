@@ -1,0 +1,172 @@
+:root {
+  color-scheme: dark;
+  --lab-bg: #071018;
+  --lab-panel: rgba(10, 20, 29, 0.86);
+  --lab-panel-2: rgba(15, 29, 40, 0.9);
+  --lab-ink: #ecf7fb;
+  --lab-muted: #9db4c3;
+  --lab-line: rgba(174, 204, 220, 0.22);
+  --lab-accent: #4fd5c8;
+  --lab-accent-2: #88c0ff;
+  --lab-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+}
+
+body {
+  background:
+    radial-gradient(circle at 16% 10%, rgba(79, 213, 200, 0.16), transparent 28%),
+    radial-gradient(circle at 88% 20%, rgba(136, 192, 255, 0.12), transparent 28%),
+    linear-gradient(135deg, #071018 0%, #0c151d 46%, #111820 100%) !important;
+  color: var(--lab-ink) !important;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(236, 247, 251, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(236, 247, 251, 0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, #000, rgba(0, 0, 0, 0.44), transparent 96%);
+}
+
+header {
+  padding: 14px 16px !important;
+  border: 1px solid var(--lab-line) !important;
+  border-radius: 8px !important;
+  background: rgba(10, 20, 29, 0.72) !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2) !important;
+  backdrop-filter: blur(14px);
+}
+
+h1,
+h2,
+.panel-title,
+.control-head label,
+.status strong,
+.status-pill strong {
+  color: var(--lab-ink) !important;
+}
+
+.intro,
+.sub,
+.subtitle,
+.hint,
+.status,
+.status-pill,
+.canvas-note,
+.note,
+.explain,
+.bounds,
+.value-row,
+.stat,
+.equation-note {
+  color: var(--lab-muted) !important;
+}
+
+.stage,
+.panel,
+.controls,
+.notes {
+  border-color: var(--lab-line) !important;
+  background: var(--lab-panel) !important;
+  box-shadow: var(--lab-shadow) !important;
+}
+
+.panel,
+.controls,
+.notes,
+.timeline,
+.readout,
+.formula-box,
+.formula,
+.matrix,
+.status,
+.status-pill,
+.canvas-note,
+.rho-mini,
+.mode-group,
+.target-group,
+.panel-header,
+.panel-body,
+.mode-card,
+.equation-row,
+.readout-line,
+.slider-row,
+.preset-grid,
+.button-row,
+.tabs,
+.control {
+  border-color: var(--lab-line) !important;
+  background-color: rgba(10, 20, 29, 0.76) !important;
+}
+
+.panel-header {
+  border-bottom: 1px solid var(--lab-line) !important;
+}
+
+.panel-body {
+  background-color: rgba(10, 20, 29, 0.44) !important;
+}
+
+.mode-card,
+.equation-row,
+.readout-line,
+.slider-row {
+  border: 1px solid var(--lab-line) !important;
+  border-radius: 8px !important;
+}
+
+.math,
+.equation-term,
+.row-index,
+.equals,
+.variable,
+.operator {
+  color: var(--lab-ink) !important;
+}
+
+button,
+.btn,
+.mode-btn,
+.display-toggle,
+.toggle,
+.select,
+select,
+input[type="number"] {
+  border-color: rgba(174, 204, 220, 0.26) !important;
+  background: rgba(13, 25, 35, 0.88) !important;
+  color: var(--lab-ink) !important;
+}
+
+button:hover,
+.btn:hover,
+.mode-btn:hover,
+.display-toggle:hover,
+.toggle:hover,
+.select:hover {
+  border-color: var(--lab-accent) !important;
+  background: rgba(79, 213, 200, 0.12) !important;
+}
+
+button.active,
+.mode-btn.active {
+  border-color: var(--lab-accent) !important;
+  background: rgba(79, 213, 200, 0.18) !important;
+  color: #dffffb !important;
+}
+
+.legend-item,
+.view-tools button,
+.display-controls label,
+.toolbar,
+.control,
+.note-list li {
+  border-color: rgba(174, 204, 220, 0.2) !important;
+}
+
+input[type="range"] {
+  accent-color: var(--lab-accent) !important;
+}

@@ -1,0 +1,1439 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>特征值、特征向量与相似对角化</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f6f1;
+      --ink: #151515;
+      --muted: #67645d;
+      --line: #d8d3c5;
+      --panel: #ffffff;
+      --soft: #ece8db;
+      --accent: #0f766e;
+      --accent-strong: #0b5f58;
+      --input-green: #14532d;
+      --output-green: #2f8f5b;
+      --decomp-green: #7bbf78;
+      --decomp-red: #fca5a5;
+      --decomp-blue: #93c5fd;
+      --eig-red: #dc2626;
+      --eig-blue: #2563eb;
+      --shadow: 0 18px 45px rgba(34, 30, 18, 0.1);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.08), transparent 34%),
+        linear-gradient(215deg, rgba(198, 95, 22, 0.08), transparent 36%),
+        var(--bg);
+      color: var(--ink);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1480px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 24px 0 32px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 3.2vw, 52px);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    .intro {
+      margin: 0;
+      max-width: 880px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .status-pill {
+      min-width: 190px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: var(--shadow);
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .status-pill strong {
+      display: block;
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(560px, 1fr) 420px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .stage {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.8);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 660px;
+      background: #fbfaf6;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 660px;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .legend {
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: calc(100% - 32px);
+      pointer-events: none;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 9px;
+      border: 1px solid rgba(216, 211, 197, 0.8);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      color: #424039;
+      font-size: 12px;
+      line-height: 1;
+      backdrop-filter: blur(8px);
+    }
+
+    .display-controls {
+      position: absolute;
+      left: 16px;
+      top: 58px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: calc(100% - 32px);
+      z-index: 2;
+    }
+
+    .display-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 32px;
+      padding: 6px 9px;
+      border: 1px solid rgba(216, 211, 197, 0.9);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.88);
+      color: #424039;
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      user-select: none;
+    }
+
+    .display-toggle input {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .display-toggle:has(input:not(:checked)) {
+      opacity: 0.54;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .canvas-note {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      max-width: 330px;
+      padding: 12px 14px;
+      border: 1px solid rgba(216, 211, 197, 0.9);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      backdrop-filter: blur(8px);
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .icon-button,
+    .button {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+      min-height: 38px;
+      padding: 0 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+    }
+
+    .icon-button {
+      width: 42px;
+      padding: 0;
+    }
+
+    .icon-button svg,
+    .button svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .icon-button:hover,
+    .button:hover {
+      border-color: #bdb5a3;
+      background: #f8f6ef;
+    }
+
+    .button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .button.primary:hover {
+      background: var(--accent-strong);
+      border-color: var(--accent-strong);
+    }
+
+    .progress {
+      display: grid;
+      gap: 6px;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .sidebar {
+      display: grid;
+      gap: 12px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: 0 10px 28px rgba(34, 30, 18, 0.07);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .panel-body {
+      padding: 14px;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--soft);
+    }
+
+    .tab {
+      min-height: 34px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 2px 8px rgba(34, 30, 18, 0.08);
+      font-weight: 750;
+    }
+
+    .tab[data-mode="matrix"].active {
+      color: var(--accent-strong);
+    }
+
+    .tab[data-mode="spectral"].active {
+      color: #9a4a10;
+    }
+
+    .mode-card {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid rgba(15, 118, 110, 0.28);
+      border-radius: var(--radius);
+      background: rgba(15, 118, 110, 0.08);
+      display: grid;
+      gap: 5px;
+    }
+
+    .mode-card.spectral {
+      border-color: rgba(198, 95, 22, 0.32);
+      background: rgba(198, 95, 22, 0.1);
+    }
+
+    .mode-title {
+      margin: 0;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 750;
+      line-height: 1.2;
+    }
+
+    .mode-hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .input-shell {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+
+    .input-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .input-heading strong {
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      border: 0;
+      background: transparent;
+      position: relative;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 10px;
+      outline: none;
+    }
+
+    input[type="number"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+    }
+
+    .control-row {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .slider-row {
+      display: grid;
+      grid-template-columns: 86px 1fr 52px;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .vector-inputs {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .vector-row {
+      display: grid;
+      grid-template-columns: 52px 1fr 1fr;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .vector-row strong {
+      padding-bottom: 11px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .readout {
+      display: grid;
+      gap: 8px;
+    }
+
+    .readout-line {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfaf6;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .readout-line span:first-child {
+      color: var(--muted);
+    }
+
+    .math {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      color: #2a2925;
+      word-break: break-word;
+    }
+
+    .explain {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .explain strong {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .mini {
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
+    .warning {
+      border-color: rgba(190, 18, 60, 0.35);
+      background: rgba(190, 18, 60, 0.07);
+      color: #8f1230;
+    }
+
+    .ok {
+      border-color: rgba(23, 128, 61, 0.28);
+      background: rgba(23, 128, 61, 0.08);
+      color: #145c2f;
+    }
+
+    .decomp {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .decomp-box {
+      min-height: 52px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfaf6;
+    }
+
+    @media (max-width: 1120px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        width: min(100vw - 20px, 720px);
+        padding-top: 16px;
+      }
+
+      header,
+      .sidebar,
+      .timeline {
+        grid-template-columns: 1fr;
+      }
+
+      .canvas-wrap {
+        min-height: 520px;
+      }
+
+      canvas {
+        height: 520px;
+      }
+
+      .canvas-note {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        max-width: none;
+      }
+
+      .legend {
+        left: 12px;
+        top: 12px;
+      }
+
+      .display-controls {
+        left: 12px;
+        right: 12px;
+        top: 54px;
+        max-width: none;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="../shared-demo-theme.css" />
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>特征值、特征向量与相似对角化</h1>
+        <p class="intro">观察一个矩阵如何变换整个平面：特征向量只沿自己的方向伸缩，普通向量会先被分解到特征方向上，再分别伸缩后合成新的向量。</p>
+      </div>
+      <div class="status-pill" id="diagonalStatus">
+        <strong>正在计算</strong>
+        <span>等待矩阵参数</span>
+      </div>
+    </header>
+
+    <section class="layout">
+      <div class="stage">
+        <div class="canvas-wrap">
+          <canvas id="scene" aria-label="二维线性变换动画画布"></canvas>
+          <div class="legend" aria-hidden="true">
+            <div class="legend-item" style="color: var(--input-green)"><span class="dot"></span>输入向量 x</div>
+            <div class="legend-item" style="color: var(--output-green)"><span class="dot"></span>变换后 Ax</div>
+            <div class="legend-item" style="color: var(--eig-red)"><span class="dot"></span>特征方向 v₁</div>
+            <div class="legend-item" style="color: var(--eig-blue)"><span class="dot"></span>特征方向 v₂</div>
+            <div class="legend-item" style="color: var(--decomp-red)"><span class="dot"></span>分量 αv₁</div>
+            <div class="legend-item" style="color: var(--decomp-blue)"><span class="dot"></span>分量 βv₂</div>
+            <div class="legend-item" style="color: var(--decomp-green)"><span class="dot"></span>平行四边形</div>
+          </div>
+          <div class="display-controls" aria-label="动画显示内容">
+            <label class="display-toggle"><input id="showInput" type="checkbox" checked />输入向量</label>
+            <label class="display-toggle"><input id="showOutput" type="checkbox" checked />变换后的 Ax</label>
+            <label class="display-toggle"><input id="showEigen" type="checkbox" checked />特征方向</label>
+            <label class="display-toggle"><input id="showDecomp" type="checkbox" checked />分解向量</label>
+          </div>
+          <div class="canvas-note" id="canvasNote" hidden></div>
+        </div>
+        <div class="timeline">
+          <button class="icon-button" id="playButton" aria-label="播放或暂停动画" title="播放或暂停">
+            <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+          </button>
+          <div class="progress">
+            <div class="progress-label"><span>变换进度</span><span id="progressText">0%</span></div>
+            <input id="progress" type="range" min="0" max="100" value="0" />
+          </div>
+          <button class="button mini" id="stepButton" title="单步推进">
+            <svg viewBox="0 0 24 24"><path d="M5 5v14l8-7z"></path><path d="M19 5v14"></path></svg>
+            单步
+          </button>
+          <button class="button mini" id="resetButton" title="重置动画">
+            <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path></svg>
+            重置
+          </button>
+        </div>
+      </div>
+
+      <aside class="sidebar">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>输入方式</h2>
+          </div>
+          <div class="panel-body">
+            <div class="tabs" role="tablist" aria-label="输入方式">
+              <button class="tab active" id="matrixTab" data-mode="matrix" role="tab" aria-selected="true">设定矩阵</button>
+              <button class="tab" id="spectralTab" data-mode="spectral" role="tab" aria-selected="false">设定特征</button>
+            </div>
+
+            <div class="mode-card" id="modeNotice" aria-live="polite">
+              <p class="mode-title" id="modeTitle">当前：直接设定矩阵 A</p>
+              <p class="mode-hint" id="modeHint">修改四个矩阵元素，页面会自动求特征值、特征向量，并判断是否可对角化。</p>
+            </div>
+
+            <div id="matrixControls" class="control-row">
+              <div class="input-shell">
+                <div class="input-heading"><strong>矩阵 A</strong><span>输入后自动求特征数据</span></div>
+                <div class="matrix-grid" aria-label="矩阵 A 的四个元素">
+                  <div class="field"><label for="a">a₁₁</label><input id="a" type="number" step="0.1" value="1.6" /></div>
+                  <div class="field"><label for="b">a₁₂</label><input id="b" type="number" step="0.1" value="0.9" /></div>
+                  <div class="field"><label for="c">a₂₁</label><input id="c" type="number" step="0.1" value="0.45" /></div>
+                  <div class="field"><label for="d">a₂₂</label><input id="d" type="number" step="0.1" value="0.7" /></div>
+                </div>
+              </div>
+            </div>
+
+            <div id="spectralControls" class="control-row" hidden>
+              <div class="input-shell">
+                <div class="input-heading"><strong>特征参数</strong><span>由 A = P D P⁻¹ 反推矩阵</span></div>
+                <div class="grid-2">
+                  <div class="field"><label for="lambda1">λ₁</label><input id="lambda1" type="number" step="0.1" value="2" /></div>
+                  <div class="field"><label for="lambda2">λ₂</label><input id="lambda2" type="number" step="0.1" value="0.5" /></div>
+                </div>
+                <div class="vector-inputs">
+                  <div class="vector-row">
+                    <strong>v₁</strong>
+                    <div class="field"><label for="v1x">x 坐标</label><input id="v1x" type="number" step="0.1" value="1" /></div>
+                    <div class="field"><label for="v1y">y 坐标</label><input id="v1y" type="number" step="0.1" value="0.36" /></div>
+                  </div>
+                  <div class="vector-row">
+                    <strong>v₂</strong>
+                    <div class="field"><label for="v2x">x 坐标</label><input id="v2x" type="number" step="0.1" value="-0.26" /></div>
+                    <div class="field"><label for="v2y">y 坐标</label><input id="v2y" type="number" step="0.1" value="0.97" /></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>示例矩阵</h2>
+          </div>
+          <div class="panel-body">
+            <div class="preset-grid">
+              <button class="button mini" data-preset="stretch">双方向伸缩</button>
+              <button class="button mini" data-preset="shear">剪切矩阵</button>
+              <button class="button mini" data-preset="flip">翻转与拉伸</button>
+              <button class="button mini" data-preset="rotate">旋转例子</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>自动计算结果</h2>
+          </div>
+          <div class="panel-body readout">
+            <div class="readout-line"><span>矩阵 A</span><div class="math" id="matrixReadout"></div></div>
+            <div class="readout-line"><span>特征值</span><div class="math" id="eigenReadout"></div></div>
+            <div class="readout-line"><span>特征向量</span><div class="math" id="vectorReadout"></div></div>
+            <div class="readout-line" id="diagReadoutBox"><span>对角化</span><div class="math" id="diagReadout"></div></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>当前向量分解</h2>
+          </div>
+          <div class="panel-body">
+            <div class="decomp">
+              <div class="decomp-box math" id="beforeDecomp">x = ...</div>
+              <strong>→</strong>
+              <div class="decomp-box math" id="afterDecomp">Ax = ...</div>
+            </div>
+            <p class="explain" id="explanation">如果 A 有两条独立的特征方向，任何向量都可以拆成这两条方向上的分量。矩阵变换时，每个分量只乘自己的特征值。</p>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("scene");
+    const ctx = canvas.getContext("2d");
+    const controls = {
+      a: document.getElementById("a"),
+      b: document.getElementById("b"),
+      c: document.getElementById("c"),
+      d: document.getElementById("d"),
+      lambda1: document.getElementById("lambda1"),
+      lambda2: document.getElementById("lambda2"),
+      v1x: document.getElementById("v1x"),
+      v1y: document.getElementById("v1y"),
+      v2x: document.getElementById("v2x"),
+      v2y: document.getElementById("v2y"),
+      progress: document.getElementById("progress")
+    };
+
+    const elements = {
+      progressText: document.getElementById("progressText"),
+      playButton: document.getElementById("playButton"),
+      playIcon: document.getElementById("playIcon"),
+      stepButton: document.getElementById("stepButton"),
+      resetButton: document.getElementById("resetButton"),
+      matrixControls: document.getElementById("matrixControls"),
+      spectralControls: document.getElementById("spectralControls"),
+      modeNotice: document.getElementById("modeNotice"),
+      modeTitle: document.getElementById("modeTitle"),
+      modeHint: document.getElementById("modeHint"),
+      matrixReadout: document.getElementById("matrixReadout"),
+      eigenReadout: document.getElementById("eigenReadout"),
+      vectorReadout: document.getElementById("vectorReadout"),
+      diagReadout: document.getElementById("diagReadout"),
+      diagReadoutBox: document.getElementById("diagReadoutBox"),
+      diagonalStatus: document.getElementById("diagonalStatus"),
+      beforeDecomp: document.getElementById("beforeDecomp"),
+      afterDecomp: document.getElementById("afterDecomp"),
+      explanation: document.getElementById("explanation"),
+      canvasNote: document.getElementById("canvasNote"),
+      showInput: document.getElementById("showInput"),
+      showOutput: document.getElementById("showOutput"),
+      showEigen: document.getElementById("showEigen"),
+      showDecomp: document.getElementById("showDecomp")
+    };
+
+    const EPS = 1e-8;
+    let mode = "matrix";
+    let matrix = [[1.6, 0.9], [0.45, 0.7]];
+    let progress = 0;
+    let playing = false;
+    let lastFrame = 0;
+    let vector = [2.15, 1.2];
+    let dragging = false;
+    let analysis = null;
+    let spectralWarning = "";
+    const COLORS = {
+      input: "#14532d",
+      output: "#2f8f5b",
+      decomp: "#7bbf78",
+      decompV1: "#fca5a5",
+      decompV2: "#93c5fd",
+      decompFill: "rgba(134, 239, 172, 0.26)",
+      decompLine: "rgba(74, 180, 111, 0.68)",
+      eig1: "#dc2626",
+      eig2: "#2563eb"
+    };
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function fmt(value) {
+      if (!Number.isFinite(value)) return "—";
+      if (Math.abs(value) < 1e-9) return "0";
+      const rounded = Math.round(value * 1000) / 1000;
+      return String(rounded);
+    }
+
+    function add(u, v) {
+      return [u[0] + v[0], u[1] + v[1]];
+    }
+
+    function sub(u, v) {
+      return [u[0] - v[0], u[1] - v[1]];
+    }
+
+    function scaleVec(s, v) {
+      return [s * v[0], s * v[1]];
+    }
+
+    function dot(u, v) {
+      return u[0] * v[0] + u[1] * v[1];
+    }
+
+    function len(v) {
+      return Math.hypot(v[0], v[1]);
+    }
+
+    function normalize(v) {
+      const length = len(v);
+      return length < EPS ? [1, 0] : [v[0] / length, v[1] / length];
+    }
+
+    function matVec(m, v) {
+      return [m[0][0] * v[0] + m[0][1] * v[1], m[1][0] * v[0] + m[1][1] * v[1]];
+    }
+
+    function matMul(a, b) {
+      return [
+        [a[0][0] * b[0][0] + a[0][1] * b[1][0], a[0][0] * b[0][1] + a[0][1] * b[1][1]],
+        [a[1][0] * b[0][0] + a[1][1] * b[1][0], a[1][0] * b[0][1] + a[1][1] * b[1][1]]
+      ];
+    }
+
+    function det2(m) {
+      return m[0][0] * m[1][1] - m[0][1] * m[1][0];
+    }
+
+    function inv2(m) {
+      const det = det2(m);
+      if (Math.abs(det) < EPS) return null;
+      return [[m[1][1] / det, -m[0][1] / det], [-m[1][0] / det, m[0][0] / det]];
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function ease(t) {
+      return t * t * (3 - 2 * t);
+    }
+
+    function interpolateMatrix(m, t) {
+      const e = ease(t);
+      return [
+        [lerp(1, m[0][0], e), lerp(0, m[0][1], e)],
+        [lerp(0, m[1][0], e), lerp(1, m[1][1], e)]
+      ];
+    }
+
+    function eigenvectorFor(m, lambda) {
+      const a = m[0][0] - lambda;
+      const b = m[0][1];
+      const c = m[1][0];
+      const d = m[1][1] - lambda;
+      let v;
+      if (Math.abs(b) > Math.abs(c)) {
+        v = [-b, a];
+      } else {
+        v = [-d, c];
+      }
+      if (len(v) < EPS) {
+        if (Math.abs(a) + Math.abs(c) > EPS) v = [-c, a];
+        else v = [1, 0];
+      }
+      return normalize(v);
+    }
+
+    function analyzeMatrix(m) {
+      const trace = m[0][0] + m[1][1];
+      const determinant = det2(m);
+      const disc = trace * trace - 4 * determinant;
+      if (disc < -EPS) {
+        const real = trace / 2;
+        const imag = Math.sqrt(-disc) / 2;
+        return {
+          realEigen: false,
+          diagonalizable: false,
+          complex: true,
+          values: [[real, imag], [real, -imag]],
+          vectors: [],
+          determinant
+        };
+      }
+
+      const root = Math.sqrt(Math.max(0, disc));
+      const lambdaA = (trace + root) / 2;
+      const lambdaB = (trace - root) / 2;
+      const v1 = eigenvectorFor(m, lambdaA);
+      let v2 = eigenvectorFor(m, lambdaB);
+      const repeated = Math.abs(lambdaA - lambdaB) < 1e-7;
+      let diagonalizable = false;
+
+      if (repeated) {
+        const scalarMatrix = Math.abs(m[0][1]) < 1e-7 && Math.abs(m[1][0]) < 1e-7 && Math.abs(m[0][0] - m[1][1]) < 1e-7;
+        diagonalizable = scalarMatrix;
+        v2 = scalarMatrix ? [0, 1] : normalize([-v1[1], v1[0]]);
+      } else {
+        diagonalizable = Math.abs(v1[0] * v2[1] - v1[1] * v2[0]) > 1e-5;
+      }
+
+      return {
+        realEigen: true,
+        diagonalizable,
+        complex: false,
+        repeated,
+        values: [lambdaA, lambdaB],
+        vectors: [v1, v2],
+        determinant
+      };
+    }
+
+    function matrixFromSpectral() {
+      spectralWarning = "";
+      const l1 = Number(controls.lambda1.value) || 0;
+      const l2 = Number(controls.lambda2.value) || 0;
+      const v1 = [Number(controls.v1x.value) || 0, Number(controls.v1y.value) || 0];
+      const v2 = [Number(controls.v2x.value) || 0, Number(controls.v2y.value) || 0];
+      if (len(v1) < EPS || len(v2) < EPS) {
+        spectralWarning = "特征向量不能是零向量，请为 v₁ 和 v₂ 输入非零坐标。";
+        return null;
+      }
+      const p = [[v1[0], v2[0]], [v1[1], v2[1]]];
+      const invP = inv2(p);
+      if (!invP) {
+        spectralWarning = "v₁ 和 v₂ 不能平行。二维对角化需要两条独立的特征方向。";
+        return null;
+      }
+      const d = [[l1, 0], [0, l2]];
+      return matMul(matMul(p, d), invP);
+    }
+
+    function setMatrixInputs(m) {
+      controls.a.value = fmt(m[0][0]);
+      controls.b.value = fmt(m[0][1]);
+      controls.c.value = fmt(m[1][0]);
+      controls.d.value = fmt(m[1][1]);
+    }
+
+    function readMatrixInputs() {
+      return [
+        [Number(controls.a.value) || 0, Number(controls.b.value) || 0],
+        [Number(controls.c.value) || 0, Number(controls.d.value) || 0]
+      ];
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+
+    function screenInfo() {
+      const rect = canvas.getBoundingClientRect();
+      const scale = Math.min(rect.width, rect.height) / 8.5;
+      return { w: rect.width, h: rect.height, scale, ox: rect.width / 2, oy: rect.height / 2 };
+    }
+
+    function toScreen(v) {
+      const s = screenInfo();
+      return [s.ox + v[0] * s.scale, s.oy - v[1] * s.scale];
+    }
+
+    function toWorld(point) {
+      const s = screenInfo();
+      return [(point[0] - s.ox) / s.scale, -(point[1] - s.oy) / s.scale];
+    }
+
+    function drawLine(p1, p2, color, width = 1, dash = []) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.setLineDash(dash);
+      ctx.beginPath();
+      ctx.moveTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawArrow(v, color, label, width = 3, origin = [0, 0], alpha = 1) {
+      const start = toScreen(origin);
+      const end = toScreen(add(origin, v));
+      const angle = Math.atan2(end[1] - start[1], end[0] - start[0]);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(start[0], start[1]);
+      ctx.lineTo(end[0], end[1]);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(end[0], end[1]);
+      ctx.lineTo(end[0] - 12 * Math.cos(angle - Math.PI / 7), end[1] - 12 * Math.sin(angle - Math.PI / 7));
+      ctx.lineTo(end[0] - 12 * Math.cos(angle + Math.PI / 7), end[1] - 12 * Math.sin(angle + Math.PI / 7));
+      ctx.closePath();
+      ctx.fill();
+      if (label) {
+        ctx.font = "600 13px Inter, sans-serif";
+        ctx.fillText(label, end[0] + 9, end[1] - 9);
+      }
+      ctx.restore();
+    }
+
+    function drawParallelogram(u, v) {
+      const origin = toScreen([0, 0]);
+      const p1 = toScreen(u);
+      const p2 = toScreen(add(u, v));
+      const p3 = toScreen(v);
+
+      ctx.save();
+      ctx.fillStyle = COLORS.decompFill;
+      ctx.strokeStyle = COLORS.decompLine;
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      ctx.moveTo(origin[0], origin[1]);
+      ctx.lineTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]);
+      ctx.lineTo(p3[0], p3[1]);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawText(text, v, color = "#333") {
+      const p = toScreen(v);
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.font = "600 12px Inter, sans-serif";
+      ctx.fillText(text, p[0] + 8, p[1] - 8);
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      const limit = 4;
+      for (let i = -limit; i <= limit; i++) {
+        const main = i === 0;
+        const color = main ? "rgba(21,21,21,0.38)" : "rgba(87,82,68,0.16)";
+        const width = main ? 1.5 : 1;
+        drawLine(toScreen([i, -limit]), toScreen([i, limit]), color, width);
+        drawLine(toScreen([-limit, i]), toScreen([limit, i]), color, width);
+      }
+    }
+
+    function drawEigenLine(v, color, label) {
+      const dir = normalize(v);
+      drawLine(toScreen(scaleVec(-4.8, dir)), toScreen(scaleVec(4.8, dir)), color, 2.5, [8, 7]);
+      drawText(label, scaleVec(3.35, dir), color);
+    }
+
+    function drawHandle() {
+      const p = toScreen(vector);
+      ctx.save();
+      ctx.fillStyle = COLORS.input;
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(p[0], p[1], 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawDecomposition(v1, v2) {
+      const p = [[v1[0], v2[0]], [v1[1], v2[1]]];
+      const invP = inv2(p);
+      if (!invP) return null;
+      const coeff = matVec(invP, vector);
+      const e = ease(progress);
+      const coeff1Now = coeff[0] * lerp(1, analysis.values[0], e);
+      const coeff2Now = coeff[1] * lerp(1, analysis.values[1], e);
+      const comp1Now = scaleVec(coeff1Now, v1);
+      const comp2Now = scaleVec(coeff2Now, v2);
+      const current = add(comp1Now, comp2Now);
+      const label1 = progress > 0.05 ? "α(t)v₁" : "αv₁";
+      const label2 = progress > 0.05 ? "β(t)v₂" : "βv₂";
+
+      drawParallelogram(comp1Now, comp2Now);
+      drawArrow(comp1Now, COLORS.decompV1, label1, 2.8, [0, 0], 0.96);
+      drawArrow(comp2Now, COLORS.decompV2, label2, 2.8, [0, 0], 0.96);
+      return { coeff, comp1Now, comp2Now, current };
+    }
+
+    function draw() {
+      if (!ctx || !analysis) return;
+      const s = screenInfo();
+      ctx.clearRect(0, 0, s.w, s.h);
+      ctx.fillStyle = "#fbfaf6";
+      ctx.fillRect(0, 0, s.w, s.h);
+
+      const mt = interpolateMatrix(matrix, progress);
+      drawGrid();
+
+      const showInput = elements.showInput.checked;
+      const showOutput = elements.showOutput.checked;
+      const showEigen = elements.showEigen.checked;
+      const showDecomp = elements.showDecomp.checked;
+
+      if (showEigen && analysis.realEigen && analysis.vectors.length) {
+        drawEigenLine(analysis.vectors[0], COLORS.eig1, "v₁");
+        drawEigenLine(analysis.vectors[1], COLORS.eig2, "v₂");
+        const ev1Now = matVec(mt, scaleVec(1.25, analysis.vectors[0]));
+        const ev2Now = matVec(mt, scaleVec(1.25, analysis.vectors[1]));
+        drawArrow(ev1Now, COLORS.eig1, progress > 0.55 ? "λ₁v₁" : "", 3);
+        drawArrow(ev2Now, COLORS.eig2, progress > 0.55 ? "λ₂v₂" : "", 3);
+      }
+
+      if (showDecomp && analysis.diagonalizable && analysis.vectors.length === 2) {
+        drawDecomposition(analysis.vectors[0], analysis.vectors[1]);
+      }
+
+      const current = matVec(mt, vector);
+      const final = matVec(matrix, vector);
+      if (showInput) {
+        drawArrow(vector, COLORS.input, "x", 3.6);
+        drawHandle();
+      }
+      if (showOutput) {
+        drawArrow(current, COLORS.output, progress > 0.96 ? "Ax" : "", 3.6, [0, 0], 0.92);
+        if (progress > 0.001) {
+          drawLine(toScreen(vector), toScreen(final), "rgba(20, 83, 45, 0.25)", 2, [7, 6]);
+        }
+      }
+
+      if (showEigen && analysis.complex) {
+        const r = len(vector);
+        ctx.save();
+        ctx.strokeStyle = "rgba(190,18,60,0.32)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const center = toScreen([0, 0]);
+        ctx.arc(center[0], center[1], r * s.scale, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function updateReadouts() {
+      const m = matrix;
+      analysis = analyzeMatrix(m);
+      elements.matrixReadout.innerHTML = `[[${fmt(m[0][0])}, ${fmt(m[0][1])}], [${fmt(m[1][0])}, ${fmt(m[1][1])}]]`;
+
+      if (analysis.complex) {
+        const [r, im] = analysis.values[0];
+        elements.eigenReadout.textContent = `λ = ${fmt(r)} ± ${fmt(Math.abs(im))}i`;
+        elements.vectorReadout.textContent = "没有实特征向量：真实平面里没有方向能在变换后保持同一直线。";
+        elements.diagReadout.textContent = "不能在实数范围内相似对角化；若进入复数范围，可用复特征向量描述旋转。";
+        elements.diagReadoutBox.className = "readout-line warning";
+        elements.diagonalStatus.className = "status-pill warning";
+        elements.diagonalStatus.innerHTML = "<strong>不可实对角化</strong><span>特征值是复数</span>";
+        elements.canvasNote.textContent = "这个例子像旋转：向量方向不断改变，因此实平面里没有一条固定的特征方向。";
+        elements.explanation.innerHTML = "<strong>复特征值</strong>说明变换含有旋转成分。普通实向量不会只沿原方向伸缩，所以这里不能用两条实特征向量分解整个平面。";
+      } else {
+        const [l1, l2] = analysis.values;
+        const [v1, v2] = analysis.vectors;
+        elements.eigenReadout.textContent = `λ₁ = ${fmt(l1)}，λ₂ = ${fmt(l2)}，det(A) = ${fmt(analysis.determinant)}`;
+        elements.vectorReadout.textContent = `v₁ ≈ (${fmt(v1[0])}, ${fmt(v1[1])})，v₂ ≈ (${fmt(v2[0])}, ${fmt(v2[1])})`;
+        if (analysis.diagonalizable) {
+          elements.diagReadout.textContent = `A = P D P⁻¹，P = [v₁ v₂]，D = diag(${fmt(l1)}, ${fmt(l2)})`;
+          elements.diagReadoutBox.className = "readout-line ok";
+          elements.diagonalStatus.className = "status-pill ok";
+          elements.diagonalStatus.innerHTML = "<strong>可相似对角化</strong><span>两条独立特征方向</span>";
+          elements.canvasNote.textContent = "红色和蓝色虚线是两条特征方向；深绿色向量可分解到这两条方向上，浅红和浅蓝分量从原点出发，浅绿色区域显示平行四边形分解。";
+          elements.explanation.innerHTML = "<strong>对角化的本质</strong>是换一套坐标轴：用特征向量当坐标轴后，矩阵不再混合方向，只负责把每个方向乘以对应特征值。";
+        } else {
+          elements.diagReadout.textContent = "只有一条独立特征方向，不能把整个平面分解成两个特征方向。";
+          elements.diagReadoutBox.className = "readout-line warning";
+          elements.diagonalStatus.className = "status-pill warning";
+          elements.diagonalStatus.innerHTML = "<strong>不可对角化</strong><span>缺少足够多的特征向量</span>";
+          elements.canvasNote.textContent = "这个矩阵虽然有实特征值，但独立特征方向不够，普通向量不能全部拆成一组特征向量。";
+          elements.explanation.innerHTML = "<strong>特征值存在</strong>不代表一定能对角化。二维平面需要两条独立特征方向，才能让所有向量都被拆成特征向量之和。";
+        }
+
+        const p = [[v1[0], v2[0]], [v1[1], v2[1]]];
+        const invP = inv2(p);
+        if (analysis.diagonalizable && invP) {
+          const coeff = matVec(invP, vector);
+          const axCoeff = [coeff[0] * l1, coeff[1] * l2];
+          elements.beforeDecomp.textContent = `x = ${fmt(coeff[0])}v₁ + ${fmt(coeff[1])}v₂`;
+          elements.afterDecomp.textContent = `Ax = ${fmt(axCoeff[0])}v₁ + ${fmt(axCoeff[1])}v₂`;
+        } else {
+          elements.beforeDecomp.textContent = "x 不能稳定拆成两条独立特征方向";
+          elements.afterDecomp.textContent = "Ax 不能用对角化方式快速描述";
+        }
+      }
+    }
+
+    function updateFromControls() {
+      if (mode === "matrix") {
+        matrix = readMatrixInputs();
+      } else {
+        const generated = matrixFromSpectral();
+        if (generated) {
+          matrix = generated;
+          setMatrixInputs(matrix);
+        }
+      }
+      updateReadouts();
+      elements.modeNotice.classList.toggle("warning", Boolean(spectralWarning));
+      if (spectralWarning) {
+        elements.modeTitle.textContent = "当前：特征向量无法生成矩阵";
+        elements.modeHint.textContent = spectralWarning;
+      } else if (mode === "spectral") {
+        elements.modeTitle.textContent = "当前：设定特征值与特征向量";
+        elements.modeHint.textContent = "输入 λ₁、λ₂ 和两条非零且不平行的特征向量坐标，页面会自动用 A = P D P⁻¹ 生成对应矩阵。";
+      } else {
+        elements.modeTitle.textContent = "当前：直接设定矩阵 A";
+        elements.modeHint.textContent = "修改四个矩阵元素，页面会自动求特征值、特征向量，并判断是否可对角化。";
+      }
+      draw();
+    }
+
+    function setMode(nextMode) {
+      mode = nextMode;
+      document.querySelectorAll(".tab").forEach((tab) => {
+        const active = tab.dataset.mode === mode;
+        tab.classList.toggle("active", active);
+        tab.setAttribute("aria-selected", String(active));
+      });
+      elements.matrixControls.hidden = mode !== "matrix";
+      elements.spectralControls.hidden = mode !== "spectral";
+      elements.modeNotice.classList.toggle("spectral", mode === "spectral");
+      if (mode === "matrix") {
+        elements.modeTitle.textContent = "当前：直接设定矩阵 A";
+        elements.modeHint.textContent = "修改四个矩阵元素，页面会自动求特征值、特征向量，并判断是否可对角化。";
+      } else {
+        elements.modeTitle.textContent = "当前：设定特征值与特征向量";
+        elements.modeHint.textContent = "输入 λ₁、λ₂ 和两条非零且不平行的特征向量坐标，页面会自动用 A = P D P⁻¹ 生成对应矩阵。";
+      }
+      updateFromControls();
+    }
+
+    function setPreset(name) {
+      const presets = {
+        stretch: [[1.6, 0.9], [0.45, 0.7]],
+        shear: [[1, 1.15], [0, 1]],
+        flip: [[-1.2, 0.35], [0.2, 1.45]],
+        rotate: [[0, -1], [1, 0]]
+      };
+      mode = "matrix";
+      setMode("matrix");
+      matrix = presets[name];
+      setMatrixInputs(matrix);
+      progress = 0;
+      controls.progress.value = "0";
+      elements.progressText.textContent = "0%";
+      updateFromControls();
+    }
+
+    function updatePlayIcon() {
+      elements.playIcon.innerHTML = playing
+        ? '<path d="M8 5v14"></path><path d="M16 5v14"></path>'
+        : '<path d="M8 5v14l11-7z"></path>';
+    }
+
+    function animate(time) {
+      if (!lastFrame) lastFrame = time;
+      const dt = Math.min(40, time - lastFrame) / 1000;
+      lastFrame = time;
+      if (playing) {
+        progress += dt * 0.28;
+        if (progress >= 1) {
+          progress = 1;
+          playing = false;
+          updatePlayIcon();
+        }
+        controls.progress.value = String(Math.round(progress * 100));
+        elements.progressText.textContent = `${Math.round(progress * 100)}%`;
+        draw();
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function pointerPosition(event) {
+      const rect = canvas.getBoundingClientRect();
+      return [event.clientX - rect.left, event.clientY - rect.top];
+    }
+
+    canvas.addEventListener("pointerdown", (event) => {
+      const world = toWorld(pointerPosition(event));
+      const hit = len(sub(world, vector)) < 0.22;
+      if (hit) {
+        dragging = true;
+        canvas.setPointerCapture(event.pointerId);
+      } else {
+        vector = [clamp(world[0], -4, 4), clamp(world[1], -4, 4)];
+        updateReadouts();
+        draw();
+        dragging = true;
+        canvas.setPointerCapture(event.pointerId);
+      }
+    });
+
+    canvas.addEventListener("pointermove", (event) => {
+      if (!dragging) return;
+      const world = toWorld(pointerPosition(event));
+      vector = [clamp(world[0], -4, 4), clamp(world[1], -4, 4)];
+      updateReadouts();
+      draw();
+    });
+
+    canvas.addEventListener("pointerup", (event) => {
+      dragging = false;
+      canvas.releasePointerCapture(event.pointerId);
+    });
+
+    Object.values(controls).forEach((control) => {
+      control.addEventListener("input", () => {
+        if (control === controls.progress) {
+          progress = Number(controls.progress.value) / 100;
+          elements.progressText.textContent = `${Math.round(progress * 100)}%`;
+          playing = false;
+          updatePlayIcon();
+          draw();
+        } else {
+          updateFromControls();
+        }
+      });
+    });
+
+    [elements.showInput, elements.showOutput, elements.showEigen, elements.showDecomp].forEach((toggle) => {
+      toggle.addEventListener("change", draw);
+    });
+
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => setMode(tab.dataset.mode));
+    });
+
+    document.querySelectorAll("[data-preset]").forEach((button) => {
+      button.addEventListener("click", () => setPreset(button.dataset.preset));
+    });
+
+    elements.playButton.addEventListener("click", () => {
+      if (progress >= 1) {
+        progress = 0;
+        controls.progress.value = "0";
+        elements.progressText.textContent = "0%";
+      }
+      playing = !playing;
+      lastFrame = 0;
+      updatePlayIcon();
+    });
+
+    elements.stepButton.addEventListener("click", () => {
+      playing = false;
+      progress = clamp(progress + 0.12, 0, 1);
+      controls.progress.value = String(Math.round(progress * 100));
+      elements.progressText.textContent = `${Math.round(progress * 100)}%`;
+      updatePlayIcon();
+      draw();
+    });
+
+    elements.resetButton.addEventListener("click", () => {
+      playing = false;
+      progress = 0;
+      vector = [2.15, 1.2];
+      controls.progress.value = "0";
+      elements.progressText.textContent = "0%";
+      updatePlayIcon();
+      updateReadouts();
+      draw();
+    });
+
+    window.addEventListener("resize", resizeCanvas);
+
+    updateFromControls();
+    resizeCanvas();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

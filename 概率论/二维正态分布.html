@@ -1,0 +1,1003 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>二维正态分布</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b1117;
+        --panel: #121c24;
+        --panel-2: #172431;
+        --line: #263847;
+        --line-soft: rgba(147, 170, 187, 0.18);
+        --text: #ecf7fb;
+        --muted: #91a7b5;
+        --teal: #4fd5c8;
+        --teal-2: #7cf4e8;
+        --amber: #f3b64c;
+        --orange: #f07d46;
+        --danger: #ff6b6b;
+        --shadow: 0 20px 80px rgba(0, 0, 0, 0.36);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 76% 8%, rgba(79, 213, 200, 0.18), transparent 30%),
+          linear-gradient(135deg, #081017 0%, #0c131b 44%, #10151b 100%);
+        color: var(--text);
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr) 300px;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        gap: 16px;
+        height: 100vh;
+        padding: 18px;
+      }
+
+      header {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 18px;
+        min-height: 70px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(22px, 2.2vw, 34px);
+        line-height: 1.08;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+        max-width: 760px;
+      }
+
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 238px;
+        justify-content: flex-end;
+        color: var(--muted);
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--teal);
+        box-shadow: 0 0 20px rgba(79, 213, 200, 0.9);
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        background: rgba(18, 28, 36, 0.88);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(16px);
+        border-radius: 8px;
+      }
+
+      .controls,
+      .notes {
+        min-height: 0;
+        overflow: auto;
+        padding: 16px;
+      }
+
+      .panel-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.25;
+      }
+
+      .hint {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .control {
+        padding: 14px 0;
+        border-top: 1px solid var(--line-soft);
+      }
+
+      .control:first-of-type {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .control-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+
+      label {
+        color: #d9eef4;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .symbol {
+        color: var(--teal-2);
+        font-variant-numeric: tabular-nums;
+      }
+
+      input[type="number"] {
+        width: 82px;
+        height: 34px;
+        border: 1px solid #315061;
+        border-radius: 6px;
+        background: #0b151d;
+        color: var(--text);
+        padding: 0 9px;
+        text-align: right;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--teal);
+      }
+
+      .bounds {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 4px;
+        color: #6f8797;
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .button-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      button {
+        min-height: 38px;
+        border: 1px solid #315061;
+        border-radius: 6px;
+        background: #10202a;
+        color: var(--text);
+        cursor: pointer;
+        transition:
+          transform 160ms ease,
+          border-color 160ms ease,
+          background 160ms ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+        border-color: var(--teal);
+        background: #14313a;
+      }
+
+      button.active {
+        border-color: var(--amber);
+        background: rgba(243, 182, 76, 0.14);
+        color: #ffe3ad;
+      }
+
+      .reset {
+        grid-column: 1 / -1;
+      }
+
+      .scene-wrap {
+        position: relative;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      #scene {
+        display: block;
+        width: 100%;
+        height: 100%;
+        min-height: 420px;
+      }
+
+      .scene-tools {
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        pointer-events: none;
+      }
+
+      .legend,
+      .view-chip {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        background: rgba(8, 16, 23, 0.72);
+        padding: 10px 12px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .gradient {
+        width: min(180px, 28vw);
+        height: 10px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #2667d8, #4fd5c8, #f3b64c, #f07d46);
+      }
+
+      .notes {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .formula {
+        padding: 14px;
+        border: 1px solid var(--line-soft);
+        border-radius: 8px;
+        background: rgba(7, 15, 22, 0.56);
+        color: #d9eef4;
+        line-height: 1.7;
+        font-size: 13px;
+      }
+
+      .formula .math {
+        display: block;
+        margin-top: 8px;
+        color: #ffffff;
+        font-family: "Times New Roman", "STIX Two Text", serif;
+        font-size: 15px;
+      }
+
+      .takeaways {
+        display: grid;
+        gap: 10px;
+      }
+
+      .takeaway {
+        border-left: 3px solid var(--teal);
+        padding: 2px 0 2px 11px;
+        color: #c7d8df;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .takeaway strong {
+        color: var(--text);
+      }
+
+      .matrix-bar {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr 1fr;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 16px;
+      }
+
+      .matrix-title {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .matrix {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(70px, 1fr));
+        gap: 6px;
+        max-width: 260px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .cell {
+        border: 1px solid var(--line-soft);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 9px;
+        text-align: center;
+        color: #f3fbff;
+      }
+
+      .reading {
+        color: #b6c9d2;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .reading strong {
+        color: var(--amber);
+      }
+
+      @media (max-width: 1120px) {
+        body {
+          overflow: auto;
+        }
+
+        .app {
+          grid-template-columns: 300px minmax(0, 1fr);
+          grid-template-rows: auto 560px auto auto;
+          height: auto;
+          min-height: 100vh;
+        }
+
+        .notes {
+          grid-column: 1 / -1;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .app {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto auto 460px auto auto;
+          padding: 12px;
+        }
+
+        header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .status {
+          justify-content: flex-start;
+          min-width: 0;
+        }
+
+        .controls,
+        .notes {
+          max-height: none;
+        }
+
+        .matrix-bar {
+          grid-template-columns: 1fr;
+        }
+
+        .scene-tools {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+    </style>
+    <link rel="stylesheet" href="../shared-demo-theme.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <div>
+          <h1>二维正态分布</h1>
+          <p class="subtitle">
+            拖动图像改变视角，调节参数观察密度曲面、等高线和协方差矩阵如何一起变化。
+          </p>
+        </div>
+        <div class="status" aria-live="polite">
+          <span class="status-dot"></span>
+          <span id="peakText">峰值密度：0.159</span>
+        </div>
+      </header>
+
+      <section class="controls panel" aria-label="参数控制">
+        <div class="panel-title">
+          <h2>参数控制</h2>
+          <span class="hint">实时重绘</span>
+        </div>
+
+        <div id="controlList"></div>
+
+        <div class="button-row" aria-label="参数预设">
+          <button type="button" data-preset="standard">标准圆形</button>
+          <button type="button" data-preset="shifted">均值平移</button>
+          <button type="button" data-preset="ellipse">不同标准差</button>
+          <button type="button" data-preset="positive">正相关</button>
+          <button type="button" data-preset="negative">负相关</button>
+          <button type="button" id="animateBtn">演示 ρ</button>
+          <button type="button" class="reset" id="resetBtn">重置为标准二维正态</button>
+        </div>
+      </section>
+
+      <section class="scene-wrap panel" aria-label="三维概率密度图">
+        <canvas id="scene"></canvas>
+        <div class="scene-tools">
+          <div class="legend">
+            <span>密度低</span>
+            <span class="gradient"></span>
+            <span>密度高</span>
+          </div>
+          <div class="view-chip">拖动旋转 · 滚轮缩放 · 右键平移</div>
+        </div>
+      </section>
+
+      <aside class="notes panel" aria-label="公式和讲解">
+        <div class="panel-title">
+          <h2>课堂观察</h2>
+          <span class="hint">PDF</span>
+        </div>
+
+        <div class="formula">
+          二维正态分布密度函数：
+          <span class="math">
+            f(x,y)=1/(2πσ<sub>x</sub>σ<sub>y</sub>√(1-ρ²)) · exp{-Q/[2(1-ρ²)]}
+          </span>
+          <span class="math">
+            Q=((x-μ<sub>x</sub>)/σ<sub>x</sub>)² - 2ρ((x-μ<sub>x</sub>)/σ<sub>x</sub>)((y-μ<sub>y</sub>)/σ<sub>y</sub>) + ((y-μ<sub>y</sub>)/σ<sub>y</sub>)²
+          </span>
+        </div>
+
+        <div class="takeaways">
+          <div class="takeaway">
+            <strong>μ 控制位置：</strong>改变 μ<sub>x</sub> 或 μ<sub>y</sub>，山峰整体平移。
+          </div>
+          <div class="takeaway">
+            <strong>σ 控制分散程度：</strong>标准差越大，曲面越宽、峰值越低。
+          </div>
+          <div class="takeaway">
+            <strong>ρ 控制倾斜方向：</strong>ρ &gt; 0 时等高线沿右上方向拉长，ρ &lt; 0 时沿右下方向拉长。
+          </div>
+          <div class="takeaway">
+            <strong>等高线投影：</strong>底面上的椭圆展示相同密度水平的点集。
+          </div>
+        </div>
+      </aside>
+
+      <section class="matrix-bar panel" aria-label="协方差矩阵和读数">
+        <div>
+          <div class="matrix-title">协方差矩阵 Σ</div>
+          <div class="matrix" aria-label="协方差矩阵">
+            <div class="cell" id="m00">1.00</div>
+            <div class="cell" id="m01">0.00</div>
+            <div class="cell" id="m10">0.00</div>
+            <div class="cell" id="m11">1.00</div>
+          </div>
+        </div>
+        <div class="reading" id="paramText"></div>
+        <div class="reading" id="explainText"></div>
+      </section>
+    </main>
+
+    <script>
+      const params = {
+        muX: 0,
+        muY: 0,
+        sigmaX: 1,
+        sigmaY: 1,
+        rho: 0,
+      };
+
+      const controlsMeta = [
+        { key: "muX", label: "均值 μx", min: -3, max: 3, step: 0.1 },
+        { key: "muY", label: "均值 μy", min: -3, max: 3, step: 0.1 },
+        { key: "sigmaX", label: "标准差 σx", min: 0.3, max: 3, step: 0.1 },
+        { key: "sigmaY", label: "标准差 σy", min: 0.3, max: 3, step: 0.1 },
+        { key: "rho", label: "相关系数 ρ", min: -0.95, max: 0.95, step: 0.05 },
+      ];
+
+      const presets = {
+        standard: { muX: 0, muY: 0, sigmaX: 1, sigmaY: 1, rho: 0 },
+        shifted: { muX: 1, muY: 2, sigmaX: 1, sigmaY: 1, rho: 0 },
+        ellipse: { muX: 1, muY: 2, sigmaX: 2, sigmaY: 0.4, rho: 0 },
+        positive: { muX: 0, muY: 0, sigmaX: 1, sigmaY: 1, rho: 0.8 },
+        negative: { muX: 1, muY: -1, sigmaX: 1, sigmaY: 2, rho: -0.9 },
+      };
+
+      const canvas = document.querySelector("#scene");
+      const ctx = canvas.getContext("2d");
+      const controlList = document.querySelector("#controlList");
+      const inputMap = new Map();
+      let animationOn = false;
+      let animationStart = performance.now();
+      let needsDraw = true;
+      let plotCache = null;
+      let dragState = null;
+
+      const view = {
+        yaw: -0.72,
+        pitch: 0.66,
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+      };
+
+      buildControls();
+      bindCanvasInteraction();
+      updateAll();
+
+      document.querySelectorAll("[data-preset]").forEach((button) => {
+        button.addEventListener("click", () => {
+          Object.assign(params, presets[button.dataset.preset]);
+          animationOn = false;
+          updateAnimateButton();
+          syncInputs();
+          updateAll();
+        });
+      });
+
+      document.querySelector("#resetBtn").addEventListener("click", () => {
+        Object.assign(params, presets.standard);
+        animationOn = false;
+        updateAnimateButton();
+        syncInputs();
+        updateAll();
+      });
+
+      document.querySelector("#animateBtn").addEventListener("click", () => {
+        animationOn = !animationOn;
+        animationStart = performance.now();
+        updateAnimateButton();
+      });
+
+      window.addEventListener("resize", resize);
+      resize();
+      renderLoop();
+
+      function buildControls() {
+        controlsMeta.forEach((meta) => {
+          const wrap = document.createElement("div");
+          wrap.className = "control";
+          wrap.innerHTML = `
+            <div class="control-head">
+              <label for="${meta.key}Range">${meta.label} <span class="symbol">${symbolFor(meta.key)}</span></label>
+              <input id="${meta.key}Number" type="number" min="${meta.min}" max="${meta.max}" step="${meta.step}" value="${params[meta.key]}">
+            </div>
+            <input id="${meta.key}Range" type="range" min="${meta.min}" max="${meta.max}" step="${meta.step}" value="${params[meta.key]}">
+            <div class="bounds"><span>${meta.min}</span><span>${meta.max}</span></div>
+          `;
+          controlList.appendChild(wrap);
+
+          const range = wrap.querySelector(`#${meta.key}Range`);
+          const number = wrap.querySelector(`#${meta.key}Number`);
+          inputMap.set(meta.key, { range, number, meta });
+
+          [range, number].forEach((input) => {
+            input.addEventListener("input", () => {
+              params[meta.key] = clamp(Number(input.value), meta.min, meta.max);
+              syncInputs();
+              updateAll();
+            });
+          });
+        });
+      }
+
+      function symbolFor(key) {
+        return {
+          muX: "μx",
+          muY: "μy",
+          sigmaX: "σx",
+          sigmaY: "σy",
+          rho: "ρ",
+        }[key];
+      }
+
+      function syncInputs() {
+        inputMap.forEach(({ range, number, meta }, key) => {
+          const value = roundToStep(params[key], meta.step);
+          range.value = value;
+          number.value = value;
+        });
+      }
+
+      function bindCanvasInteraction() {
+        canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+        canvas.addEventListener("pointerdown", (event) => {
+          canvas.setPointerCapture(event.pointerId);
+          dragState = {
+            x: event.clientX,
+            y: event.clientY,
+            mode: event.button === 2 ? "pan" : "rotate",
+          };
+        });
+        canvas.addEventListener("pointermove", (event) => {
+          if (!dragState) return;
+          const dx = event.clientX - dragState.x;
+          const dy = event.clientY - dragState.y;
+          dragState.x = event.clientX;
+          dragState.y = event.clientY;
+
+          if (dragState.mode === "pan") {
+            view.panX += dx;
+            view.panY += dy;
+          } else {
+            view.yaw -= dx * 0.008;
+            view.pitch = clamp(view.pitch + dy * 0.006, 0.18, 1.22);
+          }
+          needsDraw = true;
+        });
+        canvas.addEventListener("pointerup", () => {
+          dragState = null;
+        });
+        canvas.addEventListener("pointercancel", () => {
+          dragState = null;
+        });
+        canvas.addEventListener("wheel", (event) => {
+          event.preventDefault();
+          view.zoom = clamp(view.zoom * (event.deltaY > 0 ? 0.92 : 1.08), 0.58, 1.9);
+          needsDraw = true;
+        }, { passive: false });
+      }
+
+      function updateAll() {
+        plotCache = makeDistributionData();
+        needsDraw = true;
+        updateReadouts();
+        updatePresetState();
+      }
+
+      function makeDistributionData() {
+        const samples = 74;
+        const margin = 3.65;
+        const xMin = Math.min(-5.5, params.muX - margin * params.sigmaX);
+        const xMax = Math.max(5.5, params.muX + margin * params.sigmaX);
+        const yMin = Math.min(-5.5, params.muY - margin * params.sigmaY);
+        const yMax = Math.max(5.5, params.muY + margin * params.sigmaY);
+        const data = [];
+        let zMax = 0;
+
+        for (let j = 0; j < samples; j++) {
+          data[j] = [];
+          const y = lerp(yMin, yMax, j / (samples - 1));
+          for (let i = 0; i < samples; i++) {
+            const x = lerp(xMin, xMax, i / (samples - 1));
+            const z = pdf(x, y);
+            data[j][i] = { x, y, z };
+            zMax = Math.max(zMax, z);
+          }
+        }
+
+        const verticalScale = Math.min(24, 5.2 / zMax);
+        return {
+          samples,
+          xMin,
+          xMax,
+          yMin,
+          yMax,
+          data,
+          zMax,
+          verticalScale,
+          contours: makeContours(data, samples, zMax),
+        };
+      }
+
+      function makeContours(data, samples, zMax) {
+        const contours = [];
+        const levels = [0.08, 0.16, 0.26, 0.38, 0.52, 0.68, 0.82].map((v) => v * zMax);
+
+        levels.forEach((level, index) => {
+          const segments = [];
+          for (let j = 0; j < samples - 1; j++) {
+            for (let i = 0; i < samples - 1; i++) {
+              const p00 = data[j][i];
+              const p10 = data[j][i + 1];
+              const p11 = data[j + 1][i + 1];
+              const p01 = data[j + 1][i];
+              const crossings = [];
+              addCrossing(crossings, p00, p10, level);
+              addCrossing(crossings, p10, p11, level);
+              addCrossing(crossings, p11, p01, level);
+              addCrossing(crossings, p01, p00, level);
+              if (crossings.length === 2) {
+                segments.push([crossings[0], crossings[1]]);
+              } else if (crossings.length === 4) {
+                segments.push([crossings[0], crossings[1]], [crossings[2], crossings[3]]);
+              }
+            }
+          }
+          contours.push({ level, index, segments });
+        });
+
+        return contours;
+      }
+
+      function addCrossing(crossings, a, b, level) {
+        const da = a.z - level;
+        const db = b.z - level;
+        if ((da <= 0 && db >= 0) || (da >= 0 && db <= 0)) {
+          if (Math.abs(a.z - b.z) < 1e-12) return;
+          const t = (level - a.z) / (b.z - a.z);
+          if (t >= 0 && t <= 1) {
+            crossings.push({
+              x: lerp(a.x, b.x, t),
+              y: lerp(a.y, b.y, t),
+            });
+          }
+        }
+      }
+
+      function pdf(x, y) {
+        const { muX, muY, sigmaX, sigmaY, rho } = params;
+        const safeRho = clamp(rho, -0.98, 0.98);
+        const dx = (x - muX) / sigmaX;
+        const dy = (y - muY) / sigmaY;
+        const oneMinus = 1 - safeRho * safeRho;
+        const coefficient = 1 / (2 * Math.PI * sigmaX * sigmaY * Math.sqrt(oneMinus));
+        const exponent = -((dx * dx - 2 * safeRho * dx * dy + dy * dy) / (2 * oneMinus));
+        return coefficient * Math.exp(exponent);
+      }
+
+      function drawDistribution() {
+        if (!plotCache) return;
+        const dpr = window.devicePixelRatio || 1;
+        const width = canvas.width / dpr;
+        const height = canvas.height / dpr;
+
+        ctx.save();
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, width, height);
+        drawGlow(width, height);
+        drawGrid(width, height);
+        drawContours();
+        drawHeatDots();
+        drawSurface();
+        drawAxesLabels();
+        ctx.restore();
+      }
+
+      function drawGlow(width, height) {
+        const gradient = ctx.createRadialGradient(width * 0.55, height * 0.35, 20, width * 0.55, height * 0.35, Math.max(width, height) * 0.7);
+        gradient.addColorStop(0, "rgba(79, 213, 200, 0.10)");
+        gradient.addColorStop(0.48, "rgba(16, 32, 42, 0.08)");
+        gradient.addColorStop(1, "rgba(8, 16, 23, 0)");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function drawGrid(width, height) {
+        ctx.lineWidth = 1;
+        for (let i = -6; i <= 6; i += 1) {
+          drawWorldLine([-6, 0, i], [6, 0, i], "rgba(83, 113, 132, 0.28)");
+          drawWorldLine([i, 0, -6], [i, 0, 6], "rgba(83, 113, 132, 0.28)");
+        }
+        drawWorldLine([-6.4, 0, 0], [6.6, 0, 0], "rgba(214, 247, 255, 0.72)", 1.5);
+        drawWorldLine([0, 0, -6.4], [0, 0, 6.6], "rgba(214, 247, 255, 0.72)", 1.5);
+        drawWorldLine([0, 0, 0], [0, 5.8, 0], "rgba(214, 247, 255, 0.64)", 1.4);
+      }
+
+      function drawContours() {
+        ctx.lineWidth = 1.15;
+        plotCache.contours.forEach((contour) => {
+          const color = colorFor(contour.level / plotCache.zMax, 0.9);
+          ctx.strokeStyle = color;
+          ctx.beginPath();
+          contour.segments.forEach(([a, b]) => {
+            const pa = projectDataPoint(a, 0.02 + contour.index * 0.015);
+            const pb = projectDataPoint(b, 0.02 + contour.index * 0.015);
+            ctx.moveTo(pa.x, pa.y);
+            ctx.lineTo(pb.x, pb.y);
+          });
+          ctx.stroke();
+        });
+      }
+
+      function drawHeatDots() {
+        const stride = 3;
+        for (let j = 0; j < plotCache.samples; j += stride) {
+          for (let i = 0; i < plotCache.samples; i += stride) {
+            const point = plotCache.data[j][i];
+            const t = point.z / plotCache.zMax;
+            if (t < 0.025) continue;
+            const p = projectDataPoint(point, 0.012);
+            ctx.fillStyle = colorFor(t, 0.45);
+            ctx.fillRect(p.x - 1, p.y - 1, 2, 2);
+          }
+        }
+      }
+
+      function drawSurface() {
+        const cells = [];
+        for (let j = 0; j < plotCache.samples - 1; j++) {
+          for (let i = 0; i < plotCache.samples - 1; i++) {
+            const a = plotCache.data[j][i];
+            const b = plotCache.data[j][i + 1];
+            const c = plotCache.data[j + 1][i + 1];
+            const d = plotCache.data[j + 1][i];
+            const pa = projectDataPoint(a, a.z * plotCache.verticalScale);
+            const pb = projectDataPoint(b, b.z * plotCache.verticalScale);
+            const pc = projectDataPoint(c, c.z * plotCache.verticalScale);
+            const pd = projectDataPoint(d, d.z * plotCache.verticalScale);
+            const avgZ = (a.z + b.z + c.z + d.z) / (4 * plotCache.zMax);
+            const depth = (pa.depth + pb.depth + pc.depth + pd.depth) / 4;
+            cells.push({ pa, pb, pc, pd, avgZ, depth });
+          }
+        }
+
+        cells.sort((left, right) => left.depth - right.depth);
+        ctx.lineWidth = 0.35;
+        cells.forEach((cell) => {
+          const shade = 0.82 + cell.avgZ * 0.18;
+          ctx.fillStyle = colorFor(cell.avgZ, 0.9, shade);
+          ctx.strokeStyle = "rgba(232, 251, 255, 0.10)";
+          ctx.beginPath();
+          ctx.moveTo(cell.pa.x, cell.pa.y);
+          ctx.lineTo(cell.pb.x, cell.pb.y);
+          ctx.lineTo(cell.pc.x, cell.pc.y);
+          ctx.lineTo(cell.pd.x, cell.pd.y);
+          ctx.closePath();
+          ctx.fill();
+          if (cell.avgZ > 0.04) ctx.stroke();
+        });
+      }
+
+      function drawAxesLabels() {
+        const labels = [
+          ["x", [0, 0.05, 6.85]],
+          ["y", [6.85, 0.05, 0]],
+          ["密度", [0.12, 5.95, 0]],
+        ];
+        ctx.save();
+        ctx.font = "700 13px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "rgba(236, 247, 251, 0.92)";
+        labels.forEach(([text, point]) => {
+          const p = project(point[0], point[1], point[2]);
+          ctx.fillText(text, p.x, p.y);
+        });
+        ctx.restore();
+      }
+
+      function projectDataPoint(point, heightValue) {
+        return project(point.y, heightValue, point.x);
+      }
+
+      function drawWorldLine(a, b, stroke, width = 1) {
+        const pa = project(a[0], a[1], a[2]);
+        const pb = project(b[0], b[1], b[2]);
+        ctx.save();
+        ctx.lineWidth = width;
+        ctx.strokeStyle = stroke;
+        ctx.beginPath();
+        ctx.moveTo(pa.x, pa.y);
+        ctx.lineTo(pb.x, pb.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function project(x, heightValue, y) {
+        const dpr = window.devicePixelRatio || 1;
+        const width = canvas.width / dpr;
+        const height = canvas.height / dpr;
+        const scale = Math.min(width, height) / 13.4 * view.zoom;
+
+        const cosY = Math.cos(view.yaw);
+        const sinY = Math.sin(view.yaw);
+        const cosP = Math.cos(view.pitch);
+        const sinP = Math.sin(view.pitch);
+        const xr = x * cosY - y * sinY;
+        const zr = x * sinY + y * cosY;
+        const yr = heightValue * cosP - zr * sinP;
+        const depth = heightValue * sinP + zr * cosP;
+
+        return {
+          x: width * 0.52 + view.panX + xr * scale,
+          y: height * 0.61 + view.panY - yr * scale,
+          depth,
+        };
+      }
+
+      function colorFor(t, alpha = 1, shade = 1) {
+        const stops = [
+          [38, 103, 216],
+          [79, 213, 200],
+          [243, 182, 76],
+          [240, 125, 70],
+        ];
+        const scaled = clamp(t, 0, 1) * (stops.length - 1);
+        const index = Math.min(stops.length - 2, Math.floor(scaled));
+        const mix = scaled - index;
+        const rgb = stops[index].map((value, channel) => Math.round(lerp(value, stops[index + 1][channel], mix) * shade));
+        return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
+      }
+
+      function updateReadouts() {
+        const cov = params.rho * params.sigmaX * params.sigmaY;
+        const peak = 1 / (2 * Math.PI * params.sigmaX * params.sigmaY * Math.sqrt(1 - params.rho * params.rho));
+
+        document.querySelector("#m00").textContent = (params.sigmaX ** 2).toFixed(2);
+        document.querySelector("#m01").textContent = cov.toFixed(2);
+        document.querySelector("#m10").textContent = cov.toFixed(2);
+        document.querySelector("#m11").textContent = (params.sigmaY ** 2).toFixed(2);
+        document.querySelector("#peakText").textContent = `峰值密度：${peak.toFixed(3)}`;
+        document.querySelector("#paramText").innerHTML =
+          `当前参数：μ=(${fmt(params.muX)}, ${fmt(params.muY)})，σ=(${fmt(params.sigmaX)}, ${fmt(params.sigmaY)})，ρ=<strong>${fmt(params.rho)}</strong>`;
+
+        const direction = params.rho > 0.08 ? "正相关，山脊向右上方向拉长" : params.rho < -0.08 ? "负相关，山脊向右下方向拉长" : "近似不相关，等高线主要由标准差决定";
+        const width = params.sigmaX > params.sigmaY ? "x 方向更分散" : params.sigmaY > params.sigmaX ? "y 方向更分散" : "两个方向分散程度相近";
+        document.querySelector("#explainText").innerHTML = `读图：<strong>${direction}</strong>；${width}。`;
+      }
+
+      function updatePresetState() {
+        document.querySelectorAll("[data-preset]").forEach((button) => {
+          const preset = presets[button.dataset.preset];
+          const active = Object.keys(preset).every((key) => Math.abs(preset[key] - params[key]) < 1e-9);
+          button.classList.toggle("active", active);
+        });
+      }
+
+      function updateAnimateButton() {
+        document.querySelector("#animateBtn").classList.toggle("active", animationOn);
+      }
+
+      function renderLoop(now = performance.now()) {
+        if (animationOn) {
+          const t = (now - animationStart) / 1000;
+          params.rho = Math.sin(t * 0.82) * 0.9;
+          syncInputs();
+          plotCache = makeDistributionData();
+          updateReadouts();
+          updatePresetState();
+          needsDraw = true;
+        }
+        if (needsDraw) {
+          drawDistribution();
+          needsDraw = false;
+        }
+        requestAnimationFrame(renderLoop);
+      }
+
+      function resize() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const width = Math.max(320, rect.width);
+        const height = Math.max(320, rect.height);
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        needsDraw = true;
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      function fmt(value) {
+        return Number(value).toFixed(2).replace(/\.00$/, "");
+      }
+
+      function roundToStep(value, step) {
+        const decimals = String(step).split(".")[1]?.length || 0;
+        return Number(value).toFixed(decimals);
+      }
+    </script>
+  </body>
+</html>

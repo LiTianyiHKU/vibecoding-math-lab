@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>中心极限定理：学生身高与班级平均</title>
+    <link rel="stylesheet" href="../shared-demo-theme.css" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #071018;
+        --panel: rgba(10, 20, 29, 0.82);
+        --line: rgba(174, 204, 220, 0.2);
+        --ink: #ecf7fb;
+        --muted: #9db4c3;
+        --cyan: #4fd5c8;
+        --cyan-soft: rgba(79, 213, 200, 0.18);
+        --blue: #88c0ff;
+        --amber: #f3b64c;
+        --orange: #f07d46;
+        --shadow: 0 28px 88px rgba(0, 0, 0, 0.3);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 1220px;
+        min-height: 100vh;
+        color: var(--ink);
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .app {
+        width: min(1560px, calc(100% - 28px));
+        margin: 0 auto;
+        padding: 16px 0 20px;
+      }
+
+      .lab-header {
+        margin-bottom: 16px;
+      }
+
+      .eyebrow {
+        color: var(--cyan);
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.02em;
+      }
+
+      h1 {
+        margin: 6px 0 8px;
+        font-size: clamp(28px, 2.8vw, 42px);
+        line-height: 1.05;
+      }
+
+      .subtitle {
+        margin: 0;
+        max-width: 860px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .stage-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .demo-panel {
+        display: grid;
+        grid-template-rows: auto auto auto auto 1fr;
+        gap: 14px;
+        min-height: 0;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(14, 27, 39, 0.9), rgba(9, 18, 27, 0.82));
+        box-shadow: var(--shadow);
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 86px;
+      }
+
+      .panel-head h2 {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1.2;
+      }
+
+      .panel-head p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .controls {
+        display: grid;
+        padding: 0 !important;
+        overflow: visible !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border: 0 !important;
+      }
+
+      .button-row {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      button {
+        min-height: 38px;
+        border: 1px solid rgba(174, 204, 220, 0.26);
+        border-radius: 8px;
+        background: rgba(13, 25, 35, 0.9);
+        color: var(--ink);
+        cursor: pointer;
+        font-weight: 800;
+        transition:
+          transform 160ms ease,
+          border-color 160ms ease,
+          background 160ms ease,
+          color 160ms ease;
+      }
+
+      button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        border-color: var(--cyan);
+        background: rgba(79, 213, 200, 0.12);
+      }
+
+      button:disabled {
+        cursor: default;
+        opacity: 0.48;
+      }
+
+      button.active {
+        border-color: var(--amber);
+        background: rgba(243, 182, 76, 0.16);
+        color: #ffe3ad;
+      }
+
+      .bulk-button {
+        grid-column: 1 / -1;
+        min-height: 42px;
+        border-color: rgba(243, 182, 76, 0.42);
+        background: rgba(243, 182, 76, 0.13);
+        color: #ffe3ad;
+      }
+
+      .visual-band {
+        display: grid;
+        grid-template-rows: auto auto auto;
+        gap: 12px;
+        min-height: 270px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(11, 21, 31, 0.94), rgba(10, 18, 27, 0.78));
+      }
+
+      .visual-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .status-pill,
+      .recent-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .status-pill {
+        gap: 10px;
+      }
+
+      .status-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: rgba(145, 167, 181, 0.74);
+      }
+
+      .status-pill.running .status-dot {
+        background: var(--cyan);
+        box-shadow: 0 0 18px rgba(79, 213, 200, 0.8);
+      }
+
+      .status-pill.animating .status-dot {
+        background: var(--amber);
+        box-shadow: 0 0 18px rgba(243, 182, 76, 0.9);
+      }
+
+      .status-pill strong,
+      .recent-chip strong {
+        color: var(--ink);
+      }
+
+      .recent-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .recent-chip strong {
+        margin-left: 6px;
+        font-size: 13px;
+      }
+
+      .height-area {
+        display: grid;
+        min-height: 136px;
+        height: 136px;
+        align-items: center;
+      }
+
+      .height-area.single {
+        place-items: center;
+      }
+
+      .student-card {
+        display: grid;
+        place-items: center;
+        width: 124px;
+        height: 124px;
+        border: 1px solid rgba(174, 204, 220, 0.18);
+        border-radius: 24px;
+        background:
+          radial-gradient(circle at 35% 20%, rgba(255, 255, 255, 0.1), transparent 36%),
+          linear-gradient(180deg, rgba(17, 33, 46, 0.96), rgba(9, 16, 23, 0.94));
+        box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 18px 46px rgba(0, 0, 0, 0.26);
+      }
+
+      .student-icon {
+        position: relative;
+        width: 54px;
+        height: 86px;
+      }
+
+      .student-icon::before,
+      .student-icon::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #dff5fb;
+      }
+
+      .student-icon::before {
+        top: 0;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+      }
+
+      .student-icon::after {
+        bottom: 0;
+        width: 42px;
+        height: 48px;
+        border-radius: 18px 18px 10px 10px;
+      }
+
+      .student-card.rolling .student-icon::before,
+      .student-card.rolling .student-icon::after {
+        background: #ffe3ad;
+      }
+
+      .height-grid {
+        display: grid;
+        grid-template-columns: repeat(10, 28px);
+        grid-auto-rows: 34px;
+        justify-content: center;
+        align-items: end;
+        gap: 8px;
+      }
+
+      .person-bar {
+        align-self: end;
+        justify-self: center;
+        width: 18px;
+        min-height: 12px;
+        border: 1px solid rgba(174, 204, 220, 0.16);
+        border-radius: 999px 999px 4px 4px;
+        background: linear-gradient(180deg, rgba(79, 213, 200, 0.98), rgba(47, 118, 210, 0.78));
+      }
+
+      .person-bar.rolling {
+        background: linear-gradient(180deg, rgba(243, 182, 76, 0.98), rgba(240, 125, 70, 0.78));
+      }
+
+      .history-panel {
+        display: grid;
+        gap: 6px;
+        min-height: 54px;
+        padding: 8px 10px;
+        border: 1px solid rgba(174, 204, 220, 0.12);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .history-label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .history-list {
+        display: flex;
+        gap: 4px;
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .history-item {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 46px;
+        height: 24px;
+        padding: 0 4px;
+        border: 1px solid rgba(174, 204, 220, 0.16);
+        border-radius: 999px;
+        background: rgba(13, 25, 35, 0.86);
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      .history-item.empty {
+        min-width: 72px;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .stat-card {
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(11, 20, 29, 0.84);
+      }
+
+      .stat-card span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .stat-card strong {
+        display: block;
+        margin-top: 8px;
+        color: var(--ink);
+        font-size: 24px;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .chart-card {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        padding: 12px 12px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(11, 20, 29, 0.84);
+      }
+
+      .chart-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+
+      .chart-head strong {
+        color: var(--ink);
+        font-size: 15px;
+      }
+
+      .chart-head span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .chart-wrap {
+        position: relative;
+        height: 330px;
+        border: 1px solid rgba(174, 204, 220, 0.12);
+        border-radius: 8px;
+        overflow: hidden;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+          rgba(8, 15, 22, 0.84);
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .note-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 16px;
+      }
+
+      .note-card {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(10, 20, 29, 0.82);
+        box-shadow: var(--shadow);
+      }
+
+      .note-card strong {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--ink);
+        font-size: 16px;
+      }
+
+      .note-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.72;
+      }
+
+      @media (max-width: 1380px) {
+        body {
+          min-width: 1120px;
+        }
+
+        .chart-wrap {
+          height: 300px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="lab-header">
+        <div>
+          <div class="eyebrow">概率论 · 身高抽样实验</div>
+          <h1>中心极限定理：学生身高</h1>
+          <p class="subtitle">
+            假设每个学生身高服从 <strong>N(170, 7²)</strong>。左边每次记录 <strong>1 名学生</strong>
+            的身高，右边每次抽取 <strong>30 名学生组成一个班</strong>，只记录这个班的平均身高。比较两侧分布，可以看清“个体差异”和“平均数波动”不是一回事。
+          </p>
+        </div>
+      </header>
+
+      <section class="stage-grid" aria-label="学生个体身高与班级平均身高对比">
+        <article class="demo-panel" id="leftPanel">
+          <div class="panel-head">
+            <div>
+              <h2>左侧统计：每次抽 1 名学生的身高</h2>
+              <p>单个学生身高本身就呈钟形，但波动范围较宽，离 170cm 很远的个体并不少见。</p>
+            </div>
+          </div>
+
+          <section class="controls" aria-label="左侧控制">
+            <div class="button-row">
+              <button type="button" id="leftStart">开始</button>
+              <button type="button" id="leftPause">暂停</button>
+              <button type="button" id="leftStep">单步</button>
+              <button type="button" id="leftReset">重置</button>
+              <button class="bulk-button" type="button" id="leftBulk">直接抽 10000 次！</button>
+            </div>
+          </section>
+
+          <section class="visual-band">
+            <div class="visual-head">
+              <div class="status-pill" id="leftStatus">
+                <span class="status-dot"></span>
+                <span>状态：<strong id="leftStatusText">等待开始</strong></span>
+              </div>
+              <div class="recent-row">
+                <span class="recent-chip">最近身高<strong id="leftRecentValue">—</strong></span>
+              </div>
+            </div>
+            <div class="height-area single" id="leftHeightArea" aria-label="左侧学生身高抽样动画">
+              <div class="student-card" id="leftStudent">
+                <div class="student-icon"></div>
+              </div>
+            </div>
+            <div class="history-panel" aria-label="左侧最近10次身高">
+              <span class="history-label">最近 10 次身高</span>
+              <div class="history-list" id="leftHistoryList">
+                <span class="history-item empty">暂无</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span>累计抽样次数</span>
+              <strong id="leftTrials">0</strong>
+            </div>
+            <div class="stat-card">
+              <span>累计学生人数</span>
+              <strong id="leftSamples">0</strong>
+            </div>
+          </div>
+
+          <section class="chart-card">
+            <div class="chart-head">
+              <strong>单个学生身高分布</strong>
+              <span>理论参考：N(170, 7²)</span>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="leftChart" aria-label="左侧单个学生身高直方图"></canvas>
+            </div>
+          </section>
+        </article>
+
+        <article class="demo-panel" id="rightPanel">
+          <div class="panel-head">
+            <div>
+              <h2>右侧统计：每次取 30 人班级的平均身高</h2>
+              <p>每次抽出 30 名学生，只把班级平均身高作为一个量来统计，结果会围绕 170cm 明显收窄。</p>
+            </div>
+          </div>
+
+          <section class="controls" aria-label="右侧控制">
+            <div class="button-row">
+              <button type="button" id="rightStart">开始</button>
+              <button type="button" id="rightPause">暂停</button>
+              <button type="button" id="rightStep">单步</button>
+              <button type="button" id="rightReset">重置</button>
+              <button class="bulk-button" type="button" id="rightBulk">直接抽 10000 次！</button>
+            </div>
+          </section>
+
+          <section class="visual-band">
+            <div class="visual-head">
+              <div class="status-pill" id="rightStatus">
+                <span class="status-dot"></span>
+                <span>状态：<strong id="rightStatusText">等待开始</strong></span>
+              </div>
+              <div class="recent-row">
+                <span class="recent-chip">最近均值<strong id="rightRecentValue">—</strong></span>
+                <span class="recent-chip">本班范围<strong id="rightRange">—</strong></span>
+              </div>
+            </div>
+            <div class="height-area" id="rightHeightArea" aria-label="右侧30人班级抽样动画">
+              <div class="height-grid" id="rightHeightGrid"></div>
+            </div>
+            <div class="history-panel" aria-label="右侧最近10次班级平均身高">
+              <span class="history-label">最近 10 次均值</span>
+              <div class="history-list" id="rightHistoryList">
+                <span class="history-item empty">暂无</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span>累计班级次数</span>
+              <strong id="rightTrials">0</strong>
+            </div>
+            <div class="stat-card">
+              <span>每班学生人数</span>
+              <strong>30</strong>
+            </div>
+          </div>
+
+          <section class="chart-card">
+            <div class="chart-head">
+              <strong>30 人班级平均身高分布</strong>
+              <span>理论参考：N(170, (7/√30)²)</span>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="rightChart" aria-label="右侧班级平均身高直方图"></canvas>
+            </div>
+          </section>
+        </article>
+      </section>
+
+      <section class="note-strip" aria-label="教学结论">
+        <article class="note-card">
+          <strong>都是钟形</strong>
+          <p>个体身高服从正态分布，所以左图本来就是钟形；班级平均值仍然围绕同一个中心形成钟形。</p>
+        </article>
+        <article class="note-card">
+          <strong>中心相同</strong>
+          <p>无论抽一个学生，还是抽 30 人求平均，长期中心都在 170cm 附近，改变的是波动大小。</p>
+        </article>
+        <article class="note-card">
+          <strong>均值更稳定</strong>
+          <p>30 个人的高低会互相抵消，平均身高的标准差只有个体标准差的 1/√30，所以右图会窄得多。</p>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const HEIGHT_MEAN = 170;
+      const HEIGHT_SD = 7;
+      const CLASS_SIZE = 30;
+      const MEAN_SD = HEIGHT_SD / Math.sqrt(CLASS_SIZE);
+      const AUTO_DELAY = 0;
+      const ROLL_FRAME_MS = 28;
+
+      const panels = {
+        left: createPanel({
+          key: "left",
+          sampleSize: 1,
+          canvas: document.getElementById("leftChart"),
+          startBtn: document.getElementById("leftStart"),
+          pauseBtn: document.getElementById("leftPause"),
+          stepBtn: document.getElementById("leftStep"),
+          resetBtn: document.getElementById("leftReset"),
+          bulkBtn: document.getElementById("leftBulk"),
+          status: document.getElementById("leftStatus"),
+          statusText: document.getElementById("leftStatusText"),
+          recentValue: document.getElementById("leftRecentValue"),
+          historyList: document.getElementById("leftHistoryList"),
+          trials: document.getElementById("leftTrials"),
+          samples: document.getElementById("leftSamples"),
+          studentElement: document.getElementById("leftStudent"),
+          counts: Array(60).fill(0),
+          binMin: 140,
+          binMax: 200,
+          binWidth: 1,
+          sigma: HEIGHT_SD,
+        }),
+        right: createPanel({
+          key: "right",
+          sampleSize: CLASS_SIZE,
+          canvas: document.getElementById("rightChart"),
+          startBtn: document.getElementById("rightStart"),
+          pauseBtn: document.getElementById("rightPause"),
+          stepBtn: document.getElementById("rightStep"),
+          resetBtn: document.getElementById("rightReset"),
+          bulkBtn: document.getElementById("rightBulk"),
+          status: document.getElementById("rightStatus"),
+          statusText: document.getElementById("rightStatusText"),
+          recentValue: document.getElementById("rightRecentValue"),
+          historyList: document.getElementById("rightHistoryList"),
+          rangeValue: document.getElementById("rightRange"),
+          trials: document.getElementById("rightTrials"),
+          gridElement: document.getElementById("rightHeightGrid"),
+          counts: Array(120).fill(0),
+          binMin: 140,
+          binMax: 200,
+          binWidth: 0.5,
+          sigma: MEAN_SD,
+        }),
+      };
+
+      initializePanels();
+      resizeAllCharts();
+      window.addEventListener("resize", resizeAllCharts);
+
+      function createPanel(config) {
+        return {
+          ...config,
+          running: false,
+          animating: false,
+          timer: 0,
+          rollTimer: 0,
+          trialsCount: 0,
+          lastValue: null,
+          lastBatch: [],
+          history: [],
+        };
+      }
+
+      function initializePanels() {
+        initializeRight();
+        Object.values(panels).forEach((panel) => {
+          panel.startBtn.addEventListener("click", () => startPanel(panel));
+          panel.pauseBtn.addEventListener("click", () => pausePanel(panel));
+          panel.stepBtn.addEventListener("click", () => stepPanel(panel));
+          panel.resetBtn.addEventListener("click", () => resetPanel(panel));
+          panel.bulkBtn.addEventListener("click", () => runBulk(panel));
+          resetPanel(panel);
+        });
+      }
+
+      function initializeRight() {
+        const fragment = document.createDocumentFragment();
+        for (let index = 0; index < CLASS_SIZE; index += 1) {
+          const bar = document.createElement("div");
+          bar.className = "person-bar";
+          bar.style.height = "24px";
+          fragment.appendChild(bar);
+        }
+        panels.right.gridElement.appendChild(fragment);
+      }
+
+      function startPanel(panel) {
+        if (panel.running) return;
+        panel.running = true;
+        updatePanelState(panel);
+        if (!panel.animating) scheduleNext(panel, 0);
+      }
+
+      function pausePanel(panel) {
+        panel.running = false;
+        clearTimeout(panel.timer);
+        updatePanelState(panel);
+      }
+
+      function stepPanel(panel) {
+        if (panel.animating) return;
+        panel.running = false;
+        clearTimeout(panel.timer);
+        updatePanelState(panel);
+        runCycle(panel);
+      }
+
+      function runBulk(panel) {
+        if (panel.animating) return;
+        panel.running = false;
+        clearTimeout(panel.timer);
+        for (let index = 0; index < 10000; index += 1) {
+          applyResult(panel, sampleHeights(panel.sampleSize), { refresh: false });
+        }
+        const finalValues = panel.lastBatch.length ? panel.lastBatch : sampleHeights(panel.sampleSize);
+        renderSample(panel, finalValues, false);
+        updatePanelReadout(panel);
+        renderHistory(panel);
+        updatePanelState(panel);
+        drawPanel(panel);
+      }
+
+      function resetPanel(panel) {
+        panel.running = false;
+        panel.animating = false;
+        panel.trialsCount = 0;
+        panel.lastValue = null;
+        panel.lastBatch = [];
+        panel.history = [];
+        panel.counts.fill(0);
+        clearTimeout(panel.timer);
+        clearInterval(panel.rollTimer);
+        if (panel.key === "left") {
+          panel.studentElement.classList.remove("rolling");
+          panel.samples.textContent = "0";
+        } else {
+          panel.rangeValue.textContent = "—";
+          Array.from(panel.gridElement.children).forEach((bar) => {
+            bar.style.height = "24px";
+            bar.classList.remove("rolling");
+          });
+        }
+        updatePanelReadout(panel);
+        renderHistory(panel);
+        updatePanelState(panel);
+        drawPanel(panel);
+      }
+
+      function scheduleNext(panel, delay) {
+        clearTimeout(panel.timer);
+        panel.timer = window.setTimeout(() => runCycle(panel), delay);
+      }
+
+      function runCycle(panel) {
+        if (panel.animating) return;
+        panel.animating = true;
+        updatePanelState(panel);
+
+        let frame = 0;
+        const totalFrames = panel.key === "left" ? 12 : 14;
+        panel.rollTimer = window.setInterval(() => {
+          frame += 1;
+          const values = sampleHeights(panel.sampleSize);
+          renderSample(panel, values, true);
+          if (frame >= totalFrames) {
+            clearInterval(panel.rollTimer);
+            const finalValues = sampleHeights(panel.sampleSize);
+            renderSample(panel, finalValues, false);
+            applyResult(panel, finalValues);
+            panel.animating = false;
+            updatePanelState(panel);
+            if (panel.running) scheduleNext(panel, AUTO_DELAY);
+          }
+        }, ROLL_FRAME_MS);
+      }
+
+      function applyResult(panel, values, options = {}) {
+        panel.trialsCount += 1;
+        panel.lastBatch = values.slice();
+        if (panel.key === "left") {
+          const value = values[0];
+          panel.lastValue = value;
+          panel.samples.textContent = String(panel.trialsCount);
+        } else {
+          const mean = average(values);
+          panel.lastValue = mean;
+          const min = Math.min(...values);
+          const max = Math.max(...values);
+          panel.rangeValue.textContent = `${min.toFixed(0)}–${max.toFixed(0)}`;
+        }
+        const binIndex = Math.min(
+          panel.counts.length - 1,
+          Math.max(0, Math.floor((panel.lastValue - panel.binMin) / panel.binWidth))
+        );
+        panel.counts[binIndex] += 1;
+        panel.history.unshift(`${panel.lastValue.toFixed(1)}`);
+        panel.history = panel.history.slice(0, 10);
+        if (options.refresh !== false) {
+          updatePanelReadout(panel);
+          renderHistory(panel);
+          drawPanel(panel);
+        }
+      }
+
+      function renderSample(panel, values, rolling) {
+        if (panel.key === "left") {
+          panel.studentElement.classList.toggle("rolling", rolling);
+        } else {
+          Array.from(panel.gridElement.children).forEach((bar, index) => {
+            const height = Math.max(12, Math.min(34, 12 + ((values[index] - 145) / 45) * 22));
+            bar.style.height = `${height}px`;
+            bar.classList.toggle("rolling", rolling);
+          });
+        }
+      }
+
+      function updatePanelReadout(panel) {
+        panel.trials.textContent = String(panel.trialsCount);
+        if (panel.lastValue == null) {
+          panel.recentValue.textContent = "—";
+          return;
+        }
+        panel.recentValue.textContent = `${panel.lastValue.toFixed(1)} cm`;
+      }
+
+      function renderHistory(panel) {
+        if (!panel.history.length) {
+          panel.historyList.innerHTML = '<span class="history-item empty">暂无</span>';
+          return;
+        }
+        panel.historyList.innerHTML = panel.history
+          .map((value) => `<span class="history-item">${value}</span>`)
+          .join("");
+      }
+
+      function updatePanelState(panel) {
+        panel.startBtn.classList.toggle("active", panel.running);
+        panel.pauseBtn.classList.toggle("active", !panel.running && !panel.animating && panel.trialsCount > 0);
+        panel.stepBtn.disabled = panel.animating;
+        panel.resetBtn.disabled = false;
+        panel.bulkBtn.disabled = panel.animating;
+        panel.pauseBtn.disabled = !panel.running && !panel.animating;
+        panel.startBtn.disabled = panel.animating;
+        panel.status.classList.toggle("running", panel.running && !panel.animating);
+        panel.status.classList.toggle("animating", panel.animating);
+
+        if (panel.animating) {
+          panel.statusText.textContent = "抽样中…";
+        } else if (panel.running) {
+          panel.statusText.textContent = "自动运行";
+        } else if (panel.trialsCount > 0) {
+          panel.statusText.textContent = "已暂停";
+        } else {
+          panel.statusText.textContent = "等待开始";
+        }
+      }
+
+      function resizeAllCharts() {
+        Object.values(panels).forEach((panel) => {
+          const rect = panel.canvas.getBoundingClientRect();
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          const width = Math.max(320, Math.round(rect.width));
+          const height = Math.max(260, Math.round(rect.height));
+          panel.canvas.width = Math.round(width * dpr);
+          panel.canvas.height = Math.round(height * dpr);
+          panel.canvas.style.width = `${width}px`;
+          panel.canvas.style.height = `${height}px`;
+          drawPanel(panel);
+        });
+      }
+
+      function drawPanel(panel) {
+        const ctx = panel.canvas.getContext("2d");
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const width = panel.canvas.width / dpr;
+        const height = panel.canvas.height / dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+
+        const padding = { top: 18, right: 18, bottom: 40, left: 50 };
+        const plotWidth = width - padding.left - padding.right;
+        const plotHeight = height - padding.top - padding.bottom;
+        ctx.fillStyle = "rgba(8, 15, 22, 0.68)";
+        ctx.fillRect(0, 0, width, height);
+
+        const curvePeak = panel.trialsCount > 0
+          ? normalPdf(HEIGHT_MEAN, HEIGHT_MEAN, panel.sigma) * panel.trialsCount * panel.binWidth
+          : 0;
+        const yMax = Math.max(1, ...panel.counts, curvePeak) * 1.22;
+
+        drawGrid(ctx, padding, plotWidth, plotHeight, yMax);
+        drawBars(ctx, panel, padding, plotWidth, plotHeight, yMax);
+        drawNormalCurve(ctx, panel, padding, plotWidth, plotHeight, yMax);
+        drawCenterLine(ctx, panel, padding, plotWidth, plotHeight);
+        drawAxes(ctx, panel, padding, plotWidth, plotHeight, yMax);
+      }
+
+      function drawGrid(ctx, padding, plotWidth, plotHeight, yMax) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(174, 204, 220, 0.09)";
+        ctx.lineWidth = 1;
+        for (let index = 0; index < 4; index += 1) {
+          const y = padding.top + (plotHeight / 3) * index;
+          ctx.beginPath();
+          ctx.moveTo(padding.left, y);
+          ctx.lineTo(padding.left + plotWidth, y);
+          ctx.stroke();
+        }
+        ctx.fillStyle = "rgba(157, 180, 195, 0.72)";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        [0, yMax / 3, (2 * yMax) / 3, yMax].forEach((value, index) => {
+          const y = padding.top + plotHeight - (plotHeight / 3) * index;
+          ctx.fillText(formatTick(value), padding.left - 8, y);
+        });
+        ctx.restore();
+      }
+
+      function drawBars(ctx, panel, padding, plotWidth, plotHeight, yMax) {
+        const slotWidth = plotWidth / panel.counts.length;
+        const barWidth = Math.max(3, slotWidth * 0.86);
+        panel.counts.forEach((count, index) => {
+          const x = padding.left + index * slotWidth + (slotWidth - barWidth) / 2;
+          const heightValue = (count / yMax) * plotHeight;
+          const y = padding.top + plotHeight - heightValue;
+          const gradient = ctx.createLinearGradient(0, y, 0, y + heightValue);
+          if (panel.key === "left") {
+            gradient.addColorStop(0, "rgba(79, 213, 200, 0.98)");
+            gradient.addColorStop(1, "rgba(47, 118, 210, 0.78)");
+          } else {
+            gradient.addColorStop(0, "rgba(243, 182, 76, 0.98)");
+            gradient.addColorStop(1, "rgba(240, 125, 70, 0.78)");
+          }
+          ctx.fillStyle = gradient;
+          roundRect(ctx, x, y, barWidth, heightValue, 4);
+          ctx.fill();
+        });
+      }
+
+      function drawNormalCurve(ctx, panel, padding, plotWidth, plotHeight, yMax) {
+        if (!panel.trialsCount) return;
+        ctx.save();
+        ctx.strokeStyle = "rgba(136, 192, 255, 0.96)";
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        for (let pixel = 0; pixel <= plotWidth; pixel += 2) {
+          const xValue = panel.binMin + (pixel / plotWidth) * (panel.binMax - panel.binMin);
+          const expectedCount = normalPdf(xValue, HEIGHT_MEAN, panel.sigma) * panel.trialsCount * panel.binWidth;
+          const y = padding.top + plotHeight - (expectedCount / yMax) * plotHeight;
+          const x = padding.left + pixel;
+          if (pixel === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.fillStyle = "rgba(136, 192, 255, 0.98)";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("理论正态", padding.left + plotWidth - 78, padding.top + 18);
+        ctx.restore();
+      }
+
+      function drawCenterLine(ctx, panel, padding, plotWidth, plotHeight) {
+        const x = padding.left + ((HEIGHT_MEAN - panel.binMin) / (panel.binMax - panel.binMin)) * plotWidth;
+        ctx.save();
+        ctx.strokeStyle = "rgba(243, 182, 76, 0.88)";
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(x, padding.top);
+        ctx.lineTo(x, padding.top + plotHeight);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(243, 182, 76, 0.98)";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("中心 170cm", Math.min(x + 6, padding.left + plotWidth - 70), padding.top + 16);
+        ctx.restore();
+      }
+
+      function drawAxes(ctx, panel, padding, plotWidth, plotHeight, yMax) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(174, 204, 220, 0.3)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, padding.top);
+        ctx.lineTo(padding.left, padding.top + plotHeight);
+        ctx.lineTo(padding.left + plotWidth, padding.top + plotHeight);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(236, 247, 251, 0.9)";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        [140, 150, 160, 170, 180, 190, 200].forEach((value) => {
+          const x = padding.left + ((value - panel.binMin) / (panel.binMax - panel.binMin)) * plotWidth;
+          ctx.fillText(String(value), x, padding.top + plotHeight + 10);
+        });
+        ctx.fillText(panel.key === "left" ? "单个学生身高 cm" : "30 人班级平均身高 cm", padding.left + plotWidth / 2, padding.top + plotHeight + 26);
+        ctx.save();
+        ctx.translate(14, padding.top + plotHeight / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(panel.key === "left" ? "出现次数" : "均值出现次数", 0, 0);
+        ctx.restore();
+        ctx.restore();
+      }
+
+      function sampleHeights(count) {
+        return Array.from({ length: count }, () => HEIGHT_MEAN + HEIGHT_SD * normalRandom());
+      }
+
+      function normalRandom() {
+        let u = 0;
+        let v = 0;
+        while (u === 0) u = Math.random();
+        while (v === 0) v = Math.random();
+        return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      }
+
+      function average(values) {
+        return values.reduce((total, value) => total + value, 0) / values.length;
+      }
+
+      function normalPdf(x, mean, sigma) {
+        const z = (x - mean) / sigma;
+        return Math.exp(-0.5 * z * z) / (sigma * Math.sqrt(2 * Math.PI));
+      }
+
+      function roundRect(ctx, x, y, width, height, radius) {
+        const r = Math.min(radius, width / 2, height / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + width, y, x + width, y + height, r);
+        ctx.arcTo(x + width, y + height, x, y + height, r);
+        ctx.arcTo(x, y + height, x, y, r);
+        ctx.arcTo(x, y, x + width, y, r);
+        ctx.closePath();
+      }
+
+      function formatTick(value) {
+        if (value >= 10) return Math.round(value).toString();
+        if (value >= 1) return value.toFixed(1).replace(/\.0$/, "");
+        return value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+      }
+    </script>
+  </body>
+</html>

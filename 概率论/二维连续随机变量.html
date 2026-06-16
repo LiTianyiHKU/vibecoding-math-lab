@@ -1,0 +1,1236 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>二维连续随机变量</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #edf3f8;
+        --paper: #ffffff;
+        --ink: #102a4c;
+        --muted: #60768e;
+        --line: #cbd8e6;
+        --grid: #eaf0f6;
+        --teal: #008f95;
+        --blue: #2f76d2;
+        --orange: #ff8a1f;
+        --orange-soft: rgba(255, 138, 31, 0.22);
+        --shadow: 0 18px 42px rgba(30, 66, 105, 0.12);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 1180px;
+        min-height: 100vh;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(237, 243, 248, 0.96) 320px),
+          var(--bg);
+        color: var(--ink);
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      .app {
+        width: min(1540px, calc(100% - 28px));
+        margin: 0 auto;
+        padding: 10px 0 12px;
+      }
+
+      header {
+        display: grid;
+        grid-template-columns: minmax(420px, 1fr) minmax(760px, auto);
+        gap: 14px;
+        align-items: start;
+        margin-bottom: 8px;
+      }
+
+      .brand {
+        color: var(--teal);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      h1 {
+        margin: 2px 0 3px;
+        font-size: 34px;
+        line-height: 1.02;
+        letter-spacing: 0;
+      }
+
+      .sub {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        max-width: 1060px;
+      }
+
+      .select,
+      .btn,
+      .mode-btn {
+        min-height: 34px;
+        border: 1px solid #adc2d7;
+        border-radius: 7px;
+        background: var(--paper);
+        color: var(--ink);
+        padding: 0 10px;
+        font-weight: 850;
+        font-size: 14px;
+      }
+
+      .select {
+        min-width: 214px;
+      }
+
+      .btn,
+      .mode-btn {
+        cursor: pointer;
+      }
+
+      .btn:hover,
+      .mode-btn:hover,
+      .select:hover {
+        border-color: var(--teal);
+      }
+
+      .mode-group {
+        display: inline-grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        padding: 3px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.8);
+      }
+
+      .target-group {
+        min-width: 112px;
+      }
+
+      .target-group.dimmed {
+        opacity: 0.54;
+      }
+
+      .mode-btn {
+        border-color: transparent;
+      }
+
+      .mode-btn.active {
+        border-color: var(--teal);
+        background: var(--teal);
+        color: white;
+      }
+
+      .rho-mini {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.94);
+        padding: 0 10px;
+      }
+
+      .rho-mini.visible {
+        display: inline-flex;
+      }
+
+      .rho-mini label {
+        color: #24476d;
+        font-size: 13px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .rho-mini input {
+        width: 120px;
+      }
+
+      .value {
+        color: var(--teal);
+        font-variant-numeric: tabular-nums;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--teal);
+      }
+
+      .stage {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: var(--shadow);
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: clamp(560px, calc(100vh - 124px), 720px);
+        background: #ffffff;
+        cursor: crosshair;
+      }
+    </style>
+    <link rel="stylesheet" href="../shared-demo-theme.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <div>
+          <div class="brand">二维连续随机变量 · 手动拖动演示</div>
+          <h1>二维连续随机变量</h1>
+          <p class="sub">二维等高线中的橙点可拖动；3维模式下拖动三维曲面可旋转视角，分析模式下边缘密度贴着等高线显示。</p>
+        </div>
+        <div class="toolbar">
+          <div class="mode-group" aria-label="显示模式">
+            <button class="mode-btn active" type="button" data-mode="surface">3维模式</button>
+            <button class="mode-btn" type="button" data-mode="analysis">分析模式</button>
+          </div>
+          <select class="select" id="analysisCase" aria-label="分析模式类型">
+            <option value="jointCdf">联合分布</option>
+            <option value="jointDensity">联合密度</option>
+            <option value="marginalCdf">边缘分布</option>
+            <option value="marginalDensity">边缘密度</option>
+          </select>
+          <div class="mode-group target-group dimmed" aria-label="边缘变量">
+            <button class="mode-btn active" type="button" data-target="x">X</button>
+            <button class="mode-btn" type="button" data-target="y">Y</button>
+          </div>
+          <select class="select" id="densityType" aria-label="选择二维密度">
+            <option value="corrNormal">相关二维正态</option>
+            <option value="indNormal">独立二维正态</option>
+            <option value="uniformRect">矩形区域均匀分布</option>
+            <option value="uniformTriangle">三角形区域均匀分布</option>
+            <option value="mixture">双峰混合正态</option>
+            <option value="expSame">独立指数分布</option>
+            <option value="expDiff">不同参数指数分布</option>
+          </select>
+          <div class="rho-mini visible" id="rhoMini">
+            <label for="rho">ρ <span class="value" id="rhoValue">0.60</span></label>
+            <input id="rho" type="range" min="-0.9" max="0.9" step="0.01" value="0.6" />
+          </div>
+          <button class="btn" id="reset" type="button">重置</button>
+        </div>
+      </header>
+
+      <section class="stage">
+        <canvas id="stage" aria-label="二维连续随机变量交互图像"></canvas>
+      </section>
+    </main>
+
+    <script>
+      const canvas = document.getElementById("stage");
+      const ctx = canvas.getContext("2d");
+      const densityType = document.getElementById("densityType");
+      const analysisCase = document.getElementById("analysisCase");
+      const rhoInput = document.getElementById("rho");
+      const rhoMini = document.getElementById("rhoMini");
+      const resetBtn = document.getElementById("reset");
+      const viewModeButtons = Array.from(document.querySelectorAll("[data-mode]"));
+      const targetButtons = Array.from(document.querySelectorAll("[data-target]"));
+      const targetGroup = document.querySelector(".target-group");
+      const rhoValue = document.getElementById("rhoValue");
+
+      const C = {
+        ink: "#102a4c",
+        muted: "#60768e",
+        line: "#cbd8e6",
+        grid: "#eaf0f6",
+        teal: "#008f95",
+        blue: "#2f76d2",
+        orange: "#ff8a1f",
+        orangeSoft: "rgba(255, 138, 31, 0.22)",
+        white: "#ffffff",
+      };
+
+      const state = {
+        mode: "surface",
+        analysisCase: "jointCdf",
+        marginalTarget: "x",
+        x: 0.8,
+        y: 0.4,
+        rho: 0.6,
+        range: 3,
+        surfaceYaw: -0.72,
+        surfacePitch: 0.82,
+        draggingPoint: false,
+        draggingSurface: false,
+        lastPointer: null,
+      };
+
+      const mix = [
+        { w: 0.52, mx: -1.25, my: -1.05, sx: 0.56, sy: 0.64 },
+        { w: 0.48, mx: 1.2, my: 1.05, sx: 0.72, sy: 0.58 },
+      ];
+
+      const defs = {
+        corrNormal: {
+          name: "相关二维正态",
+          support: "R²",
+          range: 3,
+          max: () => bivPdf(0, 0, state.rho),
+          pdf: (x, y) => bivPdf(x, y, state.rho),
+          cdf: (x, y) => bivCdf(x, y, state.rho),
+          mxPdf: normalPdf,
+          myPdf: normalPdf,
+          mxCdf: normalCdf,
+          myCdf: normalCdf,
+          reset: [0.8, 0.4],
+          rho: true,
+        },
+        indNormal: {
+          name: "独立二维正态",
+          support: "R²",
+          range: 3,
+          max: () => normalPdf(0) * normalPdf(0),
+          pdf: (x, y) => normalPdf(x) * normalPdf(y),
+          cdf: (x, y) => normalCdf(x) * normalCdf(y),
+          mxPdf: normalPdf,
+          myPdf: normalPdf,
+          mxCdf: normalCdf,
+          myCdf: normalCdf,
+          reset: [0.8, 0.4],
+          rho: false,
+        },
+        uniformRect: {
+          name: "矩形区域均匀分布",
+          support: "[-2.2,2.2]×[-1.4,1.4]",
+          range: 3,
+          max: () => 1 / (4.4 * 2.8),
+          pdf: (x, y) => (x >= -2.2 && x <= 2.2 && y >= -1.4 && y <= 1.4 ? 1 / (4.4 * 2.8) : 0),
+          cdf: (x, y) => clamp((x + 2.2) / 4.4, 0, 1) * clamp((y + 1.4) / 2.8, 0, 1),
+          mxPdf: (x) => (x >= -2.2 && x <= 2.2 ? 1 / 4.4 : 0),
+          myPdf: (y) => (y >= -1.4 && y <= 1.4 ? 1 / 2.8 : 0),
+          mxCdf: (x) => clamp((x + 2.2) / 4.4, 0, 1),
+          myCdf: (y) => clamp((y + 1.4) / 2.8, 0, 1),
+          reset: [0.7, 0.3],
+          rho: false,
+        },
+        uniformTriangle: {
+          name: "三角形区域均匀分布",
+          support: "x≥-2, y≥-2, x+y≤2",
+          range: 4.2,
+          max: () => 1 / 18,
+          pdf: (x, y) => (x >= -2 && y >= -2 && x + y <= 2 ? 1 / 18 : 0),
+          cdf: triangleCdf,
+          mxPdf: (x) => (x >= -2 && x <= 4 ? (4 - x) / 18 : 0),
+          myPdf: (y) => (y >= -2 && y <= 4 ? (4 - y) / 18 : 0),
+          mxCdf: triangleMargCdf,
+          myCdf: triangleMargCdf,
+          reset: [0.4, 0.3],
+          rho: false,
+        },
+        mixture: {
+          name: "双峰混合正态",
+          support: "R²",
+          range: 3,
+          max: () => 0.22,
+          pdf: mixturePdf,
+          cdf: mixtureCdf,
+          mxPdf: mixtureMxPdf,
+          myPdf: mixtureMyPdf,
+          mxCdf: mixtureMxCdf,
+          myCdf: mixtureMyCdf,
+          reset: [1.1, 0.8],
+          rho: false,
+        },
+        expSame: {
+          name: "独立指数分布",
+          support: "x≥0, y≥0；λx=λy=1",
+          range: 4.5,
+          max: () => 1,
+          pdf: (x, y) => expPdf(x, 1) * expPdf(y, 1),
+          cdf: (x, y) => expCdf(x, 1) * expCdf(y, 1),
+          mxPdf: (x) => expPdf(x, 1),
+          myPdf: (y) => expPdf(y, 1),
+          mxCdf: (x) => expCdf(x, 1),
+          myCdf: (y) => expCdf(y, 1),
+          reset: [0.8, 0.8],
+          rho: false,
+        },
+        expDiff: {
+          name: "不同参数指数分布",
+          support: "x≥0, y≥0；λx=0.7, λy=1.6",
+          range: 5,
+          max: () => 0.7 * 1.6,
+          pdf: (x, y) => expPdf(x, 0.7) * expPdf(y, 1.6),
+          cdf: (x, y) => expCdf(x, 0.7) * expCdf(y, 1.6),
+          mxPdf: (x) => expPdf(x, 0.7),
+          myPdf: (y) => expPdf(y, 1.6),
+          mxCdf: (x) => expCdf(x, 0.7),
+          myCdf: (y) => expCdf(y, 1.6),
+          reset: [1.3, 0.55],
+          rho: false,
+        },
+      };
+
+      function clamp(v, min, max) {
+        return Math.max(min, Math.min(max, v));
+      }
+
+      function normalPdf(z) {
+        return Math.exp(-0.5 * z * z) / Math.sqrt(2 * Math.PI);
+      }
+
+      function erf(x) {
+        const sign = x < 0 ? -1 : 1;
+        const ax = Math.abs(x);
+        const t = 1 / (1 + 0.3275911 * ax);
+        const y =
+          1 -
+          (((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
+            t *
+            Math.exp(-ax * ax));
+        return sign * y;
+      }
+
+      function normalCdf(z) {
+        return 0.5 * (1 + erf(z / Math.SQRT2));
+      }
+
+      function expPdf(x, lambda) {
+        return x >= 0 ? lambda * Math.exp(-lambda * x) : 0;
+      }
+
+      function expCdf(x, lambda) {
+        return x >= 0 ? 1 - Math.exp(-lambda * x) : 0;
+      }
+
+      function bivPdf(x, y, rho) {
+        const denom = 2 * Math.PI * Math.sqrt(1 - rho * rho);
+        const power = -(x * x - 2 * rho * x * y + y * y) / (2 * (1 - rho * rho));
+        return Math.exp(power) / denom;
+      }
+
+      function bivCdf(x, y, rho) {
+        const lower = -8;
+        const upper = clamp(x, lower, 8);
+        if (upper <= lower) return 0;
+        const n = 220;
+        const h = (upper - lower) / n;
+        const scale = Math.sqrt(1 - rho * rho);
+        let sum = 0;
+        for (let i = 0; i <= n; i += 1) {
+          const u = lower + i * h;
+          const weight = i === 0 || i === n ? 0.5 : 1;
+          sum += weight * normalPdf(u) * normalCdf((y - rho * u) / scale);
+        }
+        return clamp(sum * h, 0, 1);
+      }
+
+      function triangleCdf(x, y) {
+        const upperX = clamp(x, -2, 4);
+        if (upperX <= -2 || y <= -2) return 0;
+        const n = 260;
+        const h = (upperX + 2) / n;
+        let sum = 0;
+        for (let i = 0; i <= n; i += 1) {
+          const u = -2 + i * h;
+          const top = Math.min(y, 2 - u);
+          const len = clamp(top + 2, 0, 4 - u);
+          const weight = i === 0 || i === n ? 0.5 : 1;
+          sum += weight * len;
+        }
+        return clamp((sum * h) / 18, 0, 1);
+      }
+
+      function triangleMargCdf(x) {
+        if (x <= -2) return 0;
+        if (x >= 4) return 1;
+        return clamp((4 * x - 0.5 * x * x + 10) / 18, 0, 1);
+      }
+
+      function componentPdf(v, m, s) {
+        return normalPdf((v - m) / s) / s;
+      }
+
+      function componentCdf(v, m, s) {
+        return normalCdf((v - m) / s);
+      }
+
+      function mixturePdf(x, y) {
+        return mix.reduce((s, c) => s + c.w * componentPdf(x, c.mx, c.sx) * componentPdf(y, c.my, c.sy), 0);
+      }
+
+      function mixtureCdf(x, y) {
+        return mix.reduce((s, c) => s + c.w * componentCdf(x, c.mx, c.sx) * componentCdf(y, c.my, c.sy), 0);
+      }
+
+      function mixtureMxPdf(x) {
+        return mix.reduce((s, c) => s + c.w * componentPdf(x, c.mx, c.sx), 0);
+      }
+
+      function mixtureMyPdf(y) {
+        return mix.reduce((s, c) => s + c.w * componentPdf(y, c.my, c.sy), 0);
+      }
+
+      function mixtureMxCdf(x) {
+        return mix.reduce((s, c) => s + c.w * componentCdf(x, c.mx, c.sx), 0);
+      }
+
+      function mixtureMyCdf(y) {
+        return mix.reduce((s, c) => s + c.w * componentCdf(y, c.my, c.sy), 0);
+      }
+
+      function current() {
+        return defs[densityType.value];
+      }
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = Math.round(rect.width * ratio);
+        canvas.height = Math.round(rect.height * ratio);
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      }
+
+      function layout(w, h) {
+        if (state.mode === "surface") {
+          return {
+            surface: { x: 28, y: 28, w: Math.round(w * 0.58), h: h - 56 },
+            heat: { x: Math.round(w * 0.58) + 52, y: 28, w: w - Math.round(w * 0.58) - 80, h: h - 56 },
+          };
+        }
+
+        const main = Math.max(340, Math.min(470, h - 260));
+        return {
+          heat: { x: 42, y: 42, w: main, h: main },
+          bottomChart: { x: 42, y: 42 + main + 22, w: main, h: h - main - 92 },
+          my: { x: 42 + main + 24, y: 42, w: 230, h: main },
+          detail: { x: 42 + main + 284, y: 42, w: w - main - 326, h: Math.round((h - 66) * 0.52) },
+          notes: { x: 42 + main + 284, y: 42 + Math.round((h - 66) * 0.52) + 22, w: w - main - 326, h: h - Math.round((h - 66) * 0.52) - 86 },
+        };
+      }
+
+      function panel(box) {
+        ctx.fillStyle = "#fbfdff";
+        ctx.strokeStyle = C.line;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(box.x, box.y, box.w, box.h, 8);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      function label(text, x, y, size = 15, color = C.ink, align = "left", weight = 850) {
+        ctx.fillStyle = color;
+        ctx.font = `${weight} ${size}px Inter, PingFang SC, Microsoft YaHei, sans-serif`;
+        ctx.textAlign = align;
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, x, y);
+      }
+
+      function small(text, x, y, size = 12, color = C.muted, align = "left") {
+        ctx.fillStyle = color;
+        ctx.font = `${size}px Inter, PingFang SC, Microsoft YaHei, sans-serif`;
+        ctx.textAlign = align;
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, x, y);
+      }
+
+      function map2D(box) {
+        const r = state.range;
+        return {
+          px: (x) => box.x + ((x + r) / (2 * r)) * box.w,
+          py: (y) => box.y + box.h - ((y + r) / (2 * r)) * box.h,
+          x: (px) => ((px - box.x) / box.w) * 2 * r - r,
+          y: (py) => r - ((py - box.y) / box.h) * 2 * r,
+        };
+      }
+
+      function project3D(box, x, y, z, max) {
+        const yaw = state.surfaceYaw;
+        const pitch = state.surfacePitch;
+        const cy = Math.cos(yaw);
+        const sy = Math.sin(yaw);
+        const cp = Math.cos(pitch);
+        const sp = Math.sin(pitch);
+        const x1 = x * cy - y * sy;
+        const y1 = x * sy + y * cy;
+        const z1 = (z / Math.max(max, 0.0001)) * state.range * 1.35;
+        const y2 = y1 * cp - z1 * sp;
+        const z2 = y1 * sp + z1 * cp;
+        const scale = Math.min(box.w, box.h) / (state.range * 3.15);
+        return {
+          x: box.x + box.w / 2 + x1 * scale,
+          y: box.y + box.h * 0.66 + y2 * scale,
+          depth: z2,
+        };
+      }
+
+      function drawSurface(box, def) {
+        panel(box);
+        label("三维密度曲面 z=f(x,y)", box.x + 18, box.y + 24, 18, C.teal);
+        small("在这个区域拖动可旋转视角", box.x + 18, box.y + 50);
+        const r = state.range;
+        const max = Math.max(def.max(), 0.0001);
+        const n = 42;
+        const base = [
+          project3D(box, -r, -r, 0, max),
+          project3D(box, r, -r, 0, max),
+          project3D(box, r, r, 0, max),
+          project3D(box, -r, r, 0, max),
+        ];
+        ctx.fillStyle = "rgba(234,240,246,0.76)";
+        ctx.beginPath();
+        ctx.moveTo(base[0].x, base[0].y);
+        for (let i = 1; i < base.length; i += 1) ctx.lineTo(base[i].x, base[i].y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "#9caec2";
+        ctx.stroke();
+
+        const quads = [];
+        for (let i = 0; i < n; i += 1) {
+          for (let j = 0; j < n; j += 1) {
+            const x0 = -r + (2 * r * i) / n;
+            const x1 = -r + (2 * r * (i + 1)) / n;
+            const y0 = -r + (2 * r * j) / n;
+            const y1 = -r + (2 * r * (j + 1)) / n;
+            const z00 = def.pdf(x0, y0);
+            const z10 = def.pdf(x1, y0);
+            const z11 = def.pdf(x1, y1);
+            const z01 = def.pdf(x0, y1);
+            const pts = [
+              project3D(box, x0, y0, z00, max),
+              project3D(box, x1, y0, z10, max),
+              project3D(box, x1, y1, z11, max),
+              project3D(box, x0, y1, z01, max),
+            ];
+            quads.push({
+              depth: pts.reduce((s, p) => s + p.depth, 0) / 4,
+              pts,
+              z: (z00 + z10 + z11 + z01) / 4,
+            });
+          }
+        }
+        quads.sort((a, b) => a.depth - b.depth);
+        quads.forEach((q) => {
+          const t = Math.sqrt(clamp(q.z / max, 0, 1));
+          ctx.fillStyle = `rgba(${Math.round(0 + t * 255)}, ${Math.round(143 + t * 8)}, ${Math.round(149 - t * 80)}, ${0.18 + t * 0.58})`;
+          ctx.beginPath();
+          ctx.moveTo(q.pts[0].x, q.pts[0].y);
+          q.pts.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
+          ctx.closePath();
+          ctx.fill();
+        });
+
+        ctx.strokeStyle = "rgba(16,42,76,0.14)";
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= n; i += 3) {
+          ctx.beginPath();
+          for (let j = 0; j <= n; j += 1) {
+            const x = -r + (2 * r * i) / n;
+            const y = -r + (2 * r * j) / n;
+            const p = project3D(box, x, y, def.pdf(x, y), max);
+            if (j === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+          }
+          ctx.stroke();
+        }
+        for (let j = 0; j <= n; j += 3) {
+          ctx.beginPath();
+          for (let i = 0; i <= n; i += 1) {
+            const x = -r + (2 * r * i) / n;
+            const y = -r + (2 * r * j) / n;
+            const p = project3D(box, x, y, def.pdf(x, y), max);
+            if (i === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+          }
+          ctx.stroke();
+        }
+      }
+
+      function drawHeat(box, def, options = {}) {
+        const title = options.title || "二维等高线 + 联合分布区域";
+        const highlight = options.highlight || "jointCdf";
+        const cornerLabel = options.cornerLabel || "F(x,y)";
+        panel(box);
+        const m = map2D(box);
+        const r = state.range;
+        const max = Math.max(def.max(), 0.0001);
+        const cell = Math.max(4, box.w / 92);
+        for (let px = box.x + 1; px < box.x + box.w - 1; px += cell) {
+          for (let py = box.y + 1; py < box.y + box.h - 1; py += cell) {
+            const t = Math.pow(clamp(def.pdf(m.x(px), m.y(py)) / max, 0, 1), 0.7);
+            ctx.fillStyle = `rgba(0,143,149,${0.04 + 0.46 * t})`;
+            ctx.fillRect(px, py, cell + 0.4, cell + 0.4);
+          }
+        }
+
+        const left = m.px(-r);
+        const bottom = m.py(-r);
+        const xLine = m.px(state.x);
+        const yLine = m.py(state.y);
+        const strip = Math.max(12, box.w * 0.035);
+        const square = Math.max(18, box.w * 0.055);
+        if (highlight === "jointCdf") {
+          ctx.fillStyle = C.orangeSoft;
+          ctx.fillRect(left, yLine, Math.max(0, xLine - left), Math.max(0, bottom - yLine));
+          ctx.strokeStyle = C.orange;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([7, 5]);
+          ctx.strokeRect(left, yLine, Math.max(0, xLine - left), Math.max(0, bottom - yLine));
+          ctx.setLineDash([]);
+        } else if (highlight === "jointDensity") {
+          ctx.fillStyle = C.orangeSoft;
+          ctx.fillRect(xLine - square / 2, yLine - square / 2, square, square);
+          ctx.strokeStyle = C.orange;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([7, 5]);
+          ctx.strokeRect(xLine - square / 2, yLine - square / 2, square, square);
+          ctx.setLineDash([]);
+        } else if (highlight === "marginalCdfX") {
+          ctx.fillStyle = C.orangeSoft;
+          ctx.fillRect(left, box.y, Math.max(0, xLine - left), box.h);
+          ctx.strokeStyle = C.orange;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([7, 5]);
+          ctx.beginPath();
+          ctx.moveTo(xLine, box.y);
+          ctx.lineTo(xLine, box.y + box.h);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        } else if (highlight === "marginalCdfY") {
+          ctx.fillStyle = C.orangeSoft;
+          ctx.fillRect(box.x, yLine, box.w, Math.max(0, bottom - yLine));
+          ctx.strokeStyle = C.orange;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([7, 5]);
+          ctx.beginPath();
+          ctx.moveTo(box.x, yLine);
+          ctx.lineTo(box.x + box.w, yLine);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        } else if (highlight === "marginalDensityX") {
+          ctx.fillStyle = C.orangeSoft;
+          ctx.fillRect(xLine - strip / 2, box.y, strip, box.h);
+          ctx.strokeStyle = C.orange;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([7, 5]);
+          ctx.beginPath();
+          ctx.moveTo(xLine, box.y);
+          ctx.lineTo(xLine, box.y + box.h);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        } else if (highlight === "marginalDensityY") {
+          ctx.fillStyle = C.orangeSoft;
+          ctx.fillRect(box.x, yLine - strip / 2, box.w, strip);
+          ctx.strokeStyle = C.orange;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([7, 5]);
+          ctx.beginPath();
+          ctx.moveTo(box.x, yLine);
+          ctx.lineTo(box.x + box.w, yLine);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        drawGrid(box);
+        drawContours(box, def);
+
+        ctx.fillStyle = C.orange;
+        ctx.beginPath();
+        ctx.arc(xLine, yLine, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        label(title, box.x + 16, box.y + 23, 17);
+        small("拖动橙点改变 x,y", box.x + 16, box.y + 49);
+        label(cornerLabel, box.x + box.w - 16, box.y + 23, 17, C.orange, "right");
+      }
+
+      function drawGrid(box) {
+        const m = map2D(box);
+        const r = state.range;
+        ctx.strokeStyle = C.grid;
+        ctx.lineWidth = 1;
+        for (let v = Math.ceil(-r); v <= r; v += 1) {
+          ctx.beginPath();
+          ctx.moveTo(m.px(v), box.y);
+          ctx.lineTo(m.px(v), box.y + box.h);
+          ctx.moveTo(box.x, m.py(v));
+          ctx.lineTo(box.x + box.w, m.py(v));
+          ctx.stroke();
+        }
+        ctx.strokeStyle = "#9aacbf";
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(box.x, m.py(0));
+        ctx.lineTo(box.x + box.w, m.py(0));
+        ctx.moveTo(m.px(0), box.y);
+        ctx.lineTo(m.px(0), box.y + box.h);
+        ctx.stroke();
+      }
+
+      function drawContours(box, def) {
+        const r = state.range;
+        const max = Math.max(def.max(), 0.0001);
+        const n = 58;
+        const vals = [];
+        for (let i = 0; i <= n; i += 1) {
+          vals[i] = [];
+          for (let j = 0; j <= n; j += 1) {
+            vals[i][j] = def.pdf(-r + (2 * r * i) / n, -r + (2 * r * j) / n);
+          }
+        }
+        const m = map2D(box);
+        const levels = [0.1, 0.2, 0.32, 0.46, 0.62, 0.8].map((t) => t * max);
+        ctx.strokeStyle = "rgba(47,118,210,0.72)";
+        ctx.lineWidth = 1.2;
+        levels.forEach((level) => {
+          for (let i = 0; i < n; i += 1) {
+            for (let j = 0; j < n; j += 1) {
+              const x0 = -r + (2 * r * i) / n;
+              const x1 = -r + (2 * r * (i + 1)) / n;
+              const y0 = -r + (2 * r * j) / n;
+              const y1 = -r + (2 * r * (j + 1)) / n;
+              const corners = [
+                { x: x0, y: y0, v: vals[i][j] },
+                { x: x1, y: y0, v: vals[i + 1][j] },
+                { x: x1, y: y1, v: vals[i + 1][j + 1] },
+                { x: x0, y: y1, v: vals[i][j + 1] },
+              ];
+              const pts = [];
+              for (let k = 0; k < 4; k += 1) {
+                const a = corners[k];
+                const b = corners[(k + 1) % 4];
+                if ((a.v < level && b.v >= level) || (a.v >= level && b.v < level)) {
+                  const t = (level - a.v) / (b.v - a.v);
+                  pts.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+                }
+              }
+              if (pts.length >= 2) {
+                ctx.beginPath();
+                ctx.moveTo(m.px(pts[0].x), m.py(pts[0].y));
+                ctx.lineTo(m.px(pts[1].x), m.py(pts[1].y));
+                ctx.stroke();
+              }
+              if (pts.length === 4) {
+                ctx.beginPath();
+                ctx.moveTo(m.px(pts[2].x), m.py(pts[2].y));
+                ctx.lineTo(m.px(pts[3].x), m.py(pts[3].y));
+                ctx.stroke();
+              }
+            }
+          }
+        });
+      }
+
+      function drawMarginalX(box, def) {
+        panel(box);
+        label("边缘密度 f_X(x)", box.x + 14, box.y + 22, 16, C.teal);
+        drawLineChart(box, def.mxPdf, state.x, C.teal, "x", maxFunction(def.mxPdf));
+      }
+
+      function drawMarginalY(box, def) {
+        panel(box);
+        label("边缘密度 f_Y(y)", box.x + 14, box.y + 22, 16, C.blue);
+        drawSideChart(box, def.myPdf, state.y, C.blue, maxFunction(def.myPdf));
+      }
+
+      function maxFunction(fn) {
+        let max = 0;
+        for (let i = 0; i <= 260; i += 1) {
+          const x = -state.range + (2 * state.range * i) / 260;
+          max = Math.max(max, fn(x));
+        }
+        return Math.max(max * 1.08, 0.001);
+      }
+
+      function drawLineChart(box, fn, marker, color, axisLabel, maxY) {
+        const r = state.range;
+        const topPad = box.h < 150 ? 44 : 52;
+        const bottomPad = box.h < 150 ? 22 : 22;
+        const plot = { x: box.x + 20, y: box.y + topPad, w: box.w - 40, h: Math.max(24, box.h - topPad - bottomPad) };
+        const px = (x) => plot.x + ((x + r) / (2 * r)) * plot.w;
+        const py = (v) => plot.y + plot.h - (v / maxY) * plot.h;
+        ctx.strokeStyle = C.grid;
+        ctx.lineWidth = 1;
+        for (let i = Math.ceil(-r); i <= r; i += 1) {
+          ctx.beginPath();
+          ctx.moveTo(px(i), plot.y);
+          ctx.lineTo(px(i), plot.y + plot.h);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        for (let i = 0; i <= 280; i += 1) {
+          const x = -r + (2 * r * i) / 280;
+          const y = py(fn(x));
+          if (i === 0) ctx.moveTo(px(x), y);
+          else ctx.lineTo(px(x), y);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = C.orange;
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        ctx.moveTo(px(marker), plot.y);
+        ctx.lineTo(px(marker), plot.y + plot.h);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        small(axisLabel, plot.x + plot.w - 2, plot.y + plot.h - 11, 12, C.orange, "right");
+      }
+
+      function drawSideChart(box, fn, marker, color, maxX) {
+        const r = state.range;
+        const plot = { x: box.x + 20, y: box.y + 54, w: box.w - 40, h: box.h - 76 };
+        const px = (v) => plot.x + (v / maxX) * plot.w;
+        const py = (y) => plot.y + plot.h - ((y + r) / (2 * r)) * plot.h;
+        ctx.strokeStyle = C.grid;
+        ctx.lineWidth = 1;
+        for (let i = Math.ceil(-r); i <= r; i += 1) {
+          ctx.beginPath();
+          ctx.moveTo(plot.x, py(i));
+          ctx.lineTo(plot.x + plot.w, py(i));
+          ctx.stroke();
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        for (let i = 0; i <= 280; i += 1) {
+          const y = -r + (2 * r * i) / 280;
+          const x = px(fn(y));
+          if (i === 0) ctx.moveTo(x, py(y));
+          else ctx.lineTo(x, py(y));
+        }
+        ctx.stroke();
+        ctx.strokeStyle = C.orange;
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        ctx.moveTo(plot.x, py(marker));
+        ctx.lineTo(plot.x + plot.w, py(marker));
+        ctx.stroke();
+        ctx.setLineDash([]);
+        small("y", plot.x + plot.w - 4, plot.y + 12, 12, C.orange, "right");
+      }
+
+      function drawCdfPanel(box, def) {
+        panel(box);
+        label("边缘分布 F_X(x), F_Y(y)", box.x + 16, box.y + 24, 17);
+        const r = state.range;
+        const plot = { x: box.x + 22, y: box.y + 60, w: box.w - 44, h: box.h - 90 };
+        const px = (x) => plot.x + ((x + r) / (2 * r)) * plot.w;
+        const py = (v) => plot.y + plot.h - v * plot.h;
+        ctx.strokeStyle = C.grid;
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i += 1) {
+          const y = plot.y + (plot.h * i) / 4;
+          ctx.beginPath();
+          ctx.moveTo(plot.x, y);
+          ctx.lineTo(plot.x + plot.w, y);
+          ctx.stroke();
+        }
+        drawCdfCurve(def.mxCdf, px, py, C.teal);
+        drawCdfCurve(def.myCdf, px, py, C.blue);
+        ctx.strokeStyle = C.orange;
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        ctx.moveTo(px(state.x), plot.y);
+        ctx.lineTo(px(state.x), plot.y + plot.h);
+        ctx.moveTo(px(state.y), plot.y);
+        ctx.lineTo(px(state.y), plot.y + plot.h);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        drawDot(px(state.x), py(def.mxCdf(state.x)), C.teal);
+        drawDot(px(state.y), py(def.myCdf(state.y)), C.blue);
+        label(`F_X=${fmt(def.mxCdf(state.x), 3)}`, plot.x + plot.w - 12, plot.y + 24, 14, C.teal, "right");
+        label(`F_Y=${fmt(def.myCdf(state.y), 3)}`, plot.x + plot.w - 12, plot.y + 50, 14, C.blue, "right");
+      }
+
+      function drawCdfCurve(fn, px, py, color) {
+        const r = state.range;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        for (let i = 0; i <= 300; i += 1) {
+          const x = -r + (2 * r * i) / 300;
+          const y = py(clamp(fn(x), 0, 1));
+          if (i === 0) ctx.moveTo(px(x), y);
+          else ctx.lineTo(px(x), y);
+        }
+        ctx.stroke();
+      }
+
+      function drawRelevantCurve(box, def) {
+        panel(box);
+        const isX = state.marginalTarget === "x";
+        const isCdf = state.analysisCase === "marginalCdf";
+        if (isCdf && isX) {
+          label("边缘分布 F_X(x)", box.x + 16, box.y + 24, 17, C.teal);
+          drawLineChart(box, def.mxCdf, state.x, C.teal, "x", 1);
+          label(`F_X=${fmt(def.mxCdf(state.x), 3)}`, box.x + box.w - 18, box.y + 50, 15, C.teal, "right");
+        } else if (isCdf && !isX) {
+          label("边缘分布 F_Y(y)", box.x + 16, box.y + 24, 17, C.blue);
+          drawSideChart(box, def.myCdf, state.y, C.blue, 1);
+          label(`F_Y=${fmt(def.myCdf(state.y), 3)}`, box.x + box.w - 18, box.y + 50, 15, C.blue, "right");
+        } else if (!isCdf && isX) {
+          label("边缘密度 f_X(x)", box.x + 16, box.y + 24, 17, C.teal);
+          drawLineChart(box, def.mxPdf, state.x, C.teal, "x", maxFunction(def.mxPdf));
+          label(`f_X=${fmt(def.mxPdf(state.x), 4)}`, box.x + box.w - 18, box.y + 50, 15, C.teal, "right");
+        } else {
+          label("边缘密度 f_Y(y)", box.x + 16, box.y + 24, 17, C.blue);
+          drawSideChart(box, def.myPdf, state.y, C.blue, maxFunction(def.myPdf));
+          label(`f_Y=${fmt(def.myPdf(state.y), 4)}`, box.x + box.w - 18, box.y + 50, 15, C.blue, "right");
+        }
+      }
+
+      function drawNotes(box, def) {
+        panel(box);
+        label(def.name, box.x + 16, box.y + 26, 18, C.ink);
+        small(def.support, box.x + 16, box.y + 52, 13);
+
+        if (state.analysisCase === "jointCdf") {
+          const p = def.cdf(state.x, state.y);
+          label("联合分布 F(x,y)", box.x + 16, box.y + 96, 17, C.orange);
+          label(fmt(p, 4), box.x + box.w - 18, box.y + 96, 30, C.orange, "right", 950);
+          const bar = { x: box.x + 18, y: box.y + 126, w: box.w - 36, h: 12 };
+          ctx.fillStyle = "#edf2f7";
+          ctx.beginPath();
+          ctx.roundRect(bar.x, bar.y, bar.w, bar.h, 6);
+          ctx.fill();
+          ctx.fillStyle = C.orange;
+          ctx.beginPath();
+          ctx.roundRect(bar.x, bar.y, bar.w * p, bar.h, 6);
+          ctx.fill();
+          small("对应二维图中活动点左下方橙色区域的概率。", box.x + 16, box.y + 164, 13);
+        } else if (state.analysisCase === "jointDensity") {
+          label("联合密度 f(x,y)", box.x + 16, box.y + 96, 17, C.teal);
+          label(fmt(def.pdf(state.x, state.y), 5), box.x + 16, box.y + 138, 34, C.teal, "left", 950);
+          small("对应活动点周围小方块区域的密度高度。", box.x + 16, box.y + 180, 13);
+        } else if (state.analysisCase === "marginalCdf") {
+          const isX = state.marginalTarget === "x";
+          const value = isX ? def.mxCdf(state.x) : def.myCdf(state.y);
+          label(isX ? "边缘分布 F_X(x)" : "边缘分布 F_Y(y)", box.x + 16, box.y + 96, 17, isX ? C.teal : C.blue);
+          label(fmt(value, 4), box.x + 16, box.y + 138, 34, isX ? C.teal : C.blue, "left", 950);
+          small(isX ? "二维图中竖线左侧全部区域被高亮。" : "二维图中横线下方全部区域被高亮。", box.x + 16, box.y + 180, 13);
+        } else {
+          const isX = state.marginalTarget === "x";
+          const value = isX ? def.mxPdf(state.x) : def.myPdf(state.y);
+          label(isX ? "边缘密度 f_X(x)" : "边缘密度 f_Y(y)", box.x + 16, box.y + 96, 17, isX ? C.teal : C.blue);
+          label(fmt(value, 4), box.x + 16, box.y + 138, 34, isX ? C.teal : C.blue, "left", 950);
+          small(isX ? "二维图中竖线附近的窄条区域被高亮。" : "二维图中横线附近的窄条区域被高亮。", box.x + 16, box.y + 180, 13);
+        }
+      }
+
+      function drawDot(x, y, color) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function fmt(v, n = 2) {
+        return v.toFixed(n);
+      }
+
+      function render() {
+        resize();
+        const rect = canvas.getBoundingClientRect();
+        const L = layout(rect.width, rect.height);
+        const def = current();
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        ctx.fillStyle = C.white;
+        ctx.fillRect(0, 0, rect.width, rect.height);
+        if (state.mode === "surface") {
+          drawSurface(L.surface, def);
+          drawHeat(L.heat, def, {
+            title: "二维等高线",
+            highlight: "jointCdf",
+            cornerLabel: "F(x,y)",
+          });
+        } else {
+          const target = state.marginalTarget;
+          const heatMap = {
+            jointCdf: "jointCdf",
+            jointDensity: "jointDensity",
+            marginalCdf: target === "x" ? "marginalCdfX" : "marginalCdfY",
+            marginalDensity: target === "x" ? "marginalDensityX" : "marginalDensityY",
+          };
+          const titleMap = {
+            jointCdf: "联合分布：左下区域",
+            jointDensity: "联合密度：活动点附近小区域",
+            marginalCdf: target === "x" ? "边缘分布 F_X(x)" : "边缘分布 F_Y(y)",
+            marginalDensity: target === "x" ? "边缘密度 f_X(x)" : "边缘密度 f_Y(y)",
+          };
+          const labelMap = {
+            jointCdf: "F(x,y)",
+            jointDensity: "f(x,y)",
+            marginalCdf: target === "x" ? "F_X(x)" : "F_Y(y)",
+            marginalDensity: target === "x" ? "f_X(x)" : "f_Y(y)",
+          };
+          drawHeat(L.heat, def, {
+            title: titleMap[state.analysisCase],
+            highlight: heatMap[state.analysisCase],
+            cornerLabel: labelMap[state.analysisCase],
+          });
+          if (state.analysisCase === "marginalCdf" || state.analysisCase === "marginalDensity") {
+            drawRelevantCurve(target === "x" ? L.bottomChart : L.my, def);
+            drawNotes(L.detail, def);
+          } else {
+            drawNotes(L.detail, def);
+          }
+        }
+        updateReadout(def);
+      }
+
+      function updateReadout(def) {
+        rhoValue.textContent = fmt(state.rho);
+        rhoInput.disabled = !def.rho;
+        rhoMini.classList.toggle("visible", def.rho);
+        analysisCase.disabled = state.mode !== "analysis";
+        analysisCase.style.opacity = state.mode === "analysis" ? "1" : "0.55";
+        const targetEnabled =
+          state.mode === "analysis" &&
+          (state.analysisCase === "marginalCdf" || state.analysisCase === "marginalDensity");
+        targetGroup.classList.toggle("dimmed", !targetEnabled);
+        targetButtons.forEach((button) => {
+          button.disabled = !targetEnabled;
+        });
+      }
+
+      function pointerHit(box, px, py) {
+        return px >= box.x && px <= box.x + box.w && py >= box.y && py <= box.y + box.h;
+      }
+
+      function pointerToPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        const L = layout(rect.width, rect.height);
+        const box = L.heat;
+        const px = event.clientX - rect.left;
+        const py = event.clientY - rect.top;
+        if (!pointerHit(box, px, py)) return false;
+        const m = map2D(box);
+        state.x = clamp(m.x(px), -state.range, state.range);
+        state.y = clamp(m.y(py), -state.range, state.range);
+        return true;
+      }
+
+      canvas.addEventListener("pointerdown", (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const L = layout(rect.width, rect.height);
+        const px = event.clientX - rect.left;
+        const py = event.clientY - rect.top;
+        if (state.mode === "surface" && pointerHit(L.surface, px, py)) {
+          state.draggingSurface = true;
+          state.lastPointer = { x: event.clientX, y: event.clientY };
+          canvas.setPointerCapture(event.pointerId);
+          return;
+        }
+        if (pointerToPoint(event)) {
+          state.draggingPoint = true;
+          canvas.setPointerCapture(event.pointerId);
+          render();
+        }
+      });
+
+      canvas.addEventListener("pointermove", (event) => {
+        if (state.draggingSurface && state.lastPointer) {
+          const dx = event.clientX - state.lastPointer.x;
+          const dy = event.clientY - state.lastPointer.y;
+          state.surfaceYaw -= dx * 0.012;
+          state.surfacePitch = clamp(state.surfacePitch - dy * 0.008, 0.25, 1.35);
+          state.lastPointer = { x: event.clientX, y: event.clientY };
+          render();
+          return;
+        }
+        if (!state.draggingPoint) return;
+        pointerToPoint(event);
+        render();
+      });
+
+      canvas.addEventListener("pointerup", (event) => {
+        state.draggingPoint = false;
+        state.draggingSurface = false;
+        state.lastPointer = null;
+        canvas.releasePointerCapture(event.pointerId);
+      });
+
+      viewModeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          state.mode = button.dataset.mode;
+          viewModeButtons.forEach((item) => item.classList.toggle("active", item === button));
+          render();
+        });
+      });
+
+      analysisCase.addEventListener("change", () => {
+        state.analysisCase = analysisCase.value;
+        if (state.mode !== "analysis") {
+          state.mode = "analysis";
+          viewModeButtons.forEach((item) => item.classList.toggle("active", item.dataset.mode === "analysis"));
+        }
+        render();
+      });
+
+      targetButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          state.marginalTarget = button.dataset.target;
+          targetButtons.forEach((item) => item.classList.toggle("active", item === button));
+          if (state.mode !== "analysis") {
+            state.mode = "analysis";
+            viewModeButtons.forEach((item) => item.classList.toggle("active", item.dataset.mode === "analysis"));
+          }
+          if (state.analysisCase === "jointCdf" || state.analysisCase === "jointDensity") {
+            state.analysisCase = "marginalCdf";
+            analysisCase.value = state.analysisCase;
+          }
+          render();
+        });
+      });
+
+      densityType.addEventListener("change", () => {
+        const def = current();
+        const [x, y] = def.reset;
+        state.range = def.range;
+        state.x = x;
+        state.y = y;
+        render();
+      });
+
+      rhoInput.addEventListener("input", (event) => {
+        state.rho = Number(event.target.value);
+        render();
+      });
+
+      resetBtn.addEventListener("click", () => {
+        const def = current();
+        const [x, y] = def.reset;
+        state.range = def.range;
+        state.x = x;
+        state.y = y;
+        state.surfaceYaw = -0.72;
+        state.surfacePitch = 0.82;
+        render();
+      });
+
+      window.addEventListener("resize", render);
+      render();
+    </script>
+  </body>
+</html>

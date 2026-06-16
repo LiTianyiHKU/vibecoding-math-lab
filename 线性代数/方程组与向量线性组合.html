@@ -1,0 +1,1497 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>方程组与向量线性组合</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f4ee;
+      --panel: #ffffff;
+      --ink: #171717;
+      --muted: #68635a;
+      --line: #d8d2c4;
+      --soft: #ede8dc;
+      --accent: #0f766e;
+      --accent-dark: #0b5f58;
+      --v1: #dc2626;
+      --v2: #2563eb;
+      --v3: #7c3aed;
+      --target: #14532d;
+      --path: #4f9b62;
+      --shadow: 0 18px 45px rgba(34, 30, 18, 0.1);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.08), transparent 34%),
+        linear-gradient(215deg, rgba(124, 58, 237, 0.07), transparent 38%),
+        var(--bg);
+      color: var(--ink);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1480px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 24px 0 34px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 3.1vw, 50px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .intro {
+      margin: 0;
+      max-width: 880px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .status {
+      min-width: 220px;
+      padding: 13px 15px;
+      border: 1px solid rgba(15, 118, 110, 0.28);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: var(--shadow);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .status strong {
+      display: block;
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+
+    .status.warn {
+      border-color: rgba(190, 18, 60, 0.35);
+      background: rgba(190, 18, 60, 0.07);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(560px, 1fr) 430px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .stage,
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 680px;
+      background: #fbfaf6;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 680px;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    canvas.dragging {
+      cursor: grabbing;
+    }
+
+    .legend {
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: calc(100% - 32px);
+      pointer-events: none;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 9px;
+      border: 1px solid rgba(216, 211, 197, 0.85);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.86);
+      color: #424039;
+      font-size: 12px;
+      line-height: 1;
+      backdrop-filter: blur(8px);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .view-tools {
+      position: absolute;
+      left: 16px;
+      top: 58px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      max-width: calc(100% - 32px);
+      z-index: 2;
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 32px;
+      padding: 6px 9px;
+      border: 1px solid rgba(216, 211, 197, 0.9);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.88);
+      color: #424039;
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+      backdrop-filter: blur(8px);
+    }
+
+    .toggle input {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .note {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      padding: 12px 14px;
+      border: 1px solid rgba(216, 211, 197, 0.9);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.88);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      backdrop-filter: blur(8px);
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .button,
+    .icon-button {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+      min-height: 38px;
+      padding: 0 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 140ms ease, border-color 140ms ease;
+    }
+
+    .icon-button {
+      width: 42px;
+      padding: 0;
+    }
+
+    .button:hover,
+    .icon-button:hover {
+      border-color: #bdb5a3;
+      background: #f8f6ef;
+    }
+
+    .button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .button svg,
+    .icon-button svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .progress {
+      display: grid;
+      gap: 6px;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .sidebar {
+      display: grid;
+      gap: 12px;
+    }
+
+    .panel-header {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .panel-body {
+      padding: 14px;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--soft);
+    }
+
+    .tab {
+      min-height: 36px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: #fff;
+      color: var(--accent-dark);
+      font-weight: 750;
+      box-shadow: 0 2px 8px rgba(34, 30, 18, 0.08);
+    }
+
+    .mode-card {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid rgba(15, 118, 110, 0.28);
+      border-radius: var(--radius);
+      background: rgba(15, 118, 110, 0.08);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .equation-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .equation-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfaf6;
+    }
+
+    .row-index {
+      min-width: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .equation-term {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+    }
+
+    .equation-term input[type="number"] {
+      width: 50px;
+      min-height: 36px;
+      text-align: center;
+      padding: 7px 6px;
+    }
+
+    .equation-result input[type="number"] {
+      width: 56px;
+    }
+
+    .variable,
+    .operator {
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 10px;
+      outline: none;
+    }
+
+    input[type="number"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+    }
+
+    .equals {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .readout {
+      display: grid;
+      gap: 8px;
+    }
+
+    .readout-line {
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfaf6;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .readout-line span:first-child {
+      color: var(--muted);
+    }
+
+    .math {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      color: #2a2925;
+      word-break: break-word;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .mini {
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
+    .slider-row {
+      display: grid;
+      grid-template-columns: 64px 1fr 44px;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .explain {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .explain strong {
+      color: var(--ink);
+    }
+
+    @media (max-width: 1120px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        width: min(100vw - 20px, 720px);
+        padding-top: 16px;
+      }
+
+      header,
+      .sidebar,
+      .timeline {
+        grid-template-columns: 1fr;
+      }
+
+      .canvas-wrap {
+        min-height: 540px;
+      }
+
+      canvas {
+        height: 540px;
+      }
+
+      .legend,
+      .view-tools {
+        left: 12px;
+        right: 12px;
+        max-width: none;
+      }
+
+      .view-tools {
+        top: 58px;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="../shared-demo-theme.css" />
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>方程组与向量线性组合</h1>
+        <p class="intro">把方程组看成一个向量问题：系数矩阵的每一列是一支已有向量，未知数就是缩放系数，常数项组成的向量是我们想拼出的目标。</p>
+      </div>
+      <div class="status" id="statusBox">
+        <strong>正在计算</strong>
+        <span>等待输入</span>
+      </div>
+    </header>
+
+    <section class="layout">
+      <div class="stage">
+        <div class="canvas-wrap">
+          <canvas id="scene" aria-label="方程组向量组合动画"></canvas>
+          <div class="legend" aria-hidden="true">
+            <div class="legend-item" style="color: var(--v1)"><span class="dot"></span>列向量 a₁</div>
+            <div class="legend-item" style="color: var(--v2)"><span class="dot"></span>列向量 a₂</div>
+            <div class="legend-item" id="legendV3" style="color: var(--v3)"><span class="dot"></span>列向量 a₃</div>
+            <div class="legend-item" style="color: var(--target)"><span class="dot"></span>目标向量 b</div>
+            <div class="legend-item" style="color: var(--path)"><span class="dot"></span>组合路径</div>
+          </div>
+          <div class="view-tools">
+            <label class="toggle"><input id="showColumns" type="checkbox" checked />列向量</label>
+            <label class="toggle"><input id="showTarget" type="checkbox" checked />目标 b</label>
+            <label class="toggle"><input id="showPath" type="checkbox" checked />组合路径</label>
+          </div>
+          <div class="note" id="canvasNote">选择二维或三维方程组，观察目标向量 b 是否能由列向量 a₁、a₂、a₃ 线性组合得到。</div>
+        </div>
+        <div class="timeline">
+          <button class="icon-button" id="playButton" aria-label="播放或暂停动画" title="播放或暂停">
+            <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+          </button>
+          <div class="progress">
+            <div class="progress-label"><span>组合进度</span><span id="progressText">0%</span></div>
+            <input id="progress" type="range" min="0" max="100" value="0" />
+          </div>
+          <button class="button mini" id="resetButton" title="重置动画">
+            <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path></svg>
+            重置
+          </button>
+        </div>
+      </div>
+
+      <aside class="sidebar" id="sidebar">
+        <section class="panel">
+          <div class="panel-header"><h2>方程组类型</h2></div>
+          <div class="panel-body">
+            <div class="tabs" role="tablist" aria-label="方程组类型">
+              <button class="tab active" data-dim="2" role="tab" aria-selected="true">二元方程组</button>
+              <button class="tab" data-dim="3" role="tab" aria-selected="false">三元方程组</button>
+            </div>
+            <div class="mode-card" id="modeHint">当前是二维情形：两条列向量尝试拼出目标向量 b。</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header"><h2>输入方程组</h2></div>
+          <div class="panel-body">
+            <div class="equation-list" id="equationList"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header"><h2>示例</h2></div>
+          <div class="panel-body">
+            <div class="preset-grid">
+              <button class="button mini" data-preset="unique2">二维唯一解</button>
+              <button class="button mini" data-preset="dependent2">二维无解</button>
+              <button class="button mini" data-preset="unique3">三维唯一解</button>
+              <button class="button mini" data-preset="plane3">三维无穷解</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="viewPanel">
+          <div class="panel-header"><h2>三维视角</h2></div>
+          <div class="panel-body">
+            <div class="slider-row">
+              <span>旋转</span>
+              <input id="yaw" type="range" min="-180" max="180" value="-35" />
+              <strong id="yawText">-35°</strong>
+            </div>
+            <div class="slider-row">
+              <span>俯仰</span>
+              <input id="pitch" type="range" min="-80" max="80" value="28" />
+              <strong id="pitchText">28°</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header"><h2>向量形式</h2></div>
+          <div class="panel-body readout">
+            <div class="readout-line"><span>方程组</span><div class="math" id="equationReadout"></div></div>
+            <div class="readout-line"><span>列向量</span><div class="math" id="columnsReadout"></div></div>
+            <div class="readout-line"><span>目标向量</span><div class="math" id="targetReadout"></div></div>
+            <div class="readout-line"><span>解读</span><div class="math" id="solutionReadout"></div></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header"><h2>几何解释</h2></div>
+          <div class="panel-body">
+            <p class="explain" id="explainText">如果存在系数 x、y，使 x a₁ + y a₂ = b，那么方程组有解；如果目标 b 不在这些列向量张成的范围内，方程组无解。</p>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("scene");
+    const ctx = canvas.getContext("2d");
+    const elements = {
+      sidebar: document.getElementById("sidebar"),
+      statusBox: document.getElementById("statusBox"),
+      modeHint: document.getElementById("modeHint"),
+      equationList: document.getElementById("equationList"),
+      equationReadout: document.getElementById("equationReadout"),
+      columnsReadout: document.getElementById("columnsReadout"),
+      targetReadout: document.getElementById("targetReadout"),
+      solutionReadout: document.getElementById("solutionReadout"),
+      explainText: document.getElementById("explainText"),
+      canvasNote: document.getElementById("canvasNote"),
+      legendV3: document.getElementById("legendV3"),
+      viewPanel: document.getElementById("viewPanel"),
+      progress: document.getElementById("progress"),
+      progressText: document.getElementById("progressText"),
+      playButton: document.getElementById("playButton"),
+      playIcon: document.getElementById("playIcon"),
+      resetButton: document.getElementById("resetButton"),
+      yaw: document.getElementById("yaw"),
+      pitch: document.getElementById("pitch"),
+      yawText: document.getElementById("yawText"),
+      pitchText: document.getElementById("pitchText"),
+      showColumns: document.getElementById("showColumns"),
+      showTarget: document.getElementById("showTarget"),
+      showPath: document.getElementById("showPath")
+    };
+
+    const COLORS = {
+      axis: "rgba(21,21,21,0.45)",
+      grid: "rgba(87,82,68,0.16)",
+      v1: "#dc2626",
+      v2: "#2563eb",
+      v3: "#7c3aed",
+      target: "#14532d",
+      path: "#4f9b62",
+      mutedPath: "rgba(79,155,98,0.28)"
+    };
+
+    const EPS = 1e-8;
+    let dim = 2;
+    let matrix = [[1, 2], [2, -1]];
+    let target = [5, 0];
+    let solution = null;
+    let progress = 0;
+    let playing = false;
+    let lastFrame = 0;
+    let draggingView = false;
+    let lastPointer = [0, 0];
+    let dragSource = null;
+    const presetCursor = {
+      unique2: 0,
+      dependent2: 0,
+      unique3: 0,
+      plane3: 0
+    };
+    const presetCases = {
+      unique2: [
+        { dim: 2, matrix: [[1, 2], [2, -1]], target: [5, 0] },
+        { dim: 2, matrix: [[2, -1], [1, 3]], target: [3, 5] },
+        { dim: 2, matrix: [[3, 1], [-2, 4]], target: [5, 6] },
+        { dim: 2, matrix: [[-1, 2], [4, 1]], target: [8, -5] }
+      ],
+      dependent2: [
+        { dim: 2, matrix: [[1, 2], [2, 4]], target: [3, 8] },
+        { dim: 2, matrix: [[2, -1], [4, -2]], target: [5, 9] },
+        { dim: 2, matrix: [[3, 6], [1, 2]], target: [12, 5] },
+        { dim: 2, matrix: [[-1, 3], [-2, 6]], target: [4, 7] }
+      ],
+      unique3: [
+        { dim: 3, matrix: [[3, 0, 0], [0, 2.5, 0], [0, 0, 3]], target: [3, 5, 3] },
+        { dim: 3, matrix: [[2, -1, 0.5], [0, 2, 0.5], [1, 0, 3]], target: [0.5, 4.5, 4] },
+        { dim: 3, matrix: [[2.5, 0, -1], [1, 2, 0.5], [0, 1, 2.5]], target: [1.5, 3.5, 3.5] },
+        { dim: 3, matrix: [[1, 2, 0], [0, 2, 3], [3, 0, 1]], target: [0, 1, 7] }
+      ],
+      plane3: [
+        { dim: 3, matrix: [[1, 2, 3], [0, 1, 1], [1, 3, 4]], target: [9, 3, 12] },
+        { dim: 3, matrix: [[1, 0, 1], [2, 1, 3], [3, 1, 4]], target: [4, 11, 15] },
+        { dim: 3, matrix: [[2, 1, 3], [1, -1, 0], [3, 0, 3]], target: [11, 1, 12] },
+        { dim: 3, matrix: [[1, 2, 0], [0, 1, 1], [1, 3, 1]], target: [3, 0, 3] }
+      ]
+    };
+
+    function fmt(value) {
+      if (!Number.isFinite(value)) return "—";
+      if (Math.abs(value) < 1e-9) return "0";
+      return String(Math.round(value * 1000) / 1000);
+    }
+
+    function cloneRows(rows) {
+      return rows.map((row) => row.slice());
+    }
+
+    function vecAdd(a, b) {
+      return a.map((value, i) => value + b[i]);
+    }
+
+    function vecScale(s, v) {
+      return v.map((value) => s * value);
+    }
+
+    function vecSub(a, b) {
+      return a.map((value, i) => value - b[i]);
+    }
+
+    function dot(a, b) {
+      return a.reduce((sum, value, i) => sum + value * b[i], 0);
+    }
+
+    function normalize(v) {
+      const length = norm(v);
+      return length < EPS ? null : vecScale(1 / length, v);
+    }
+
+    function cross(a, b) {
+      return [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0]
+      ];
+    }
+
+    function matVec(m, x) {
+      return m.map((row) => row.reduce((sum, value, i) => sum + value * x[i], 0));
+    }
+
+    function column(m, index) {
+      return m.map((row) => row[index]);
+    }
+
+    function norm(v) {
+      return Math.hypot(...v);
+    }
+
+    function rankOf(rows) {
+      const a = cloneRows(rows);
+      const rowCount = a.length;
+      const colCount = a[0].length;
+      let rank = 0;
+      for (let col = 0; col < colCount && rank < rowCount; col++) {
+        let pivot = rank;
+        for (let r = rank + 1; r < rowCount; r++) {
+          if (Math.abs(a[r][col]) > Math.abs(a[pivot][col])) pivot = r;
+        }
+        if (Math.abs(a[pivot][col]) < EPS) continue;
+        [a[rank], a[pivot]] = [a[pivot], a[rank]];
+        const div = a[rank][col];
+        for (let c = col; c < colCount; c++) a[rank][c] /= div;
+        for (let r = 0; r < rowCount; r++) {
+          if (r === rank) continue;
+          const factor = a[r][col];
+          for (let c = col; c < colCount; c++) a[r][c] -= factor * a[rank][c];
+        }
+        rank++;
+      }
+      return rank;
+    }
+
+    function solveSystem(m, b) {
+      const n = m.length;
+      const aug = m.map((row, i) => [...row, b[i]]);
+      const rankA = rankOf(m);
+      const rankAug = rankOf(aug);
+      if (rankA < rankAug) {
+        return { kind: "none", rankA, rankAug, vector: null };
+      }
+      const a = cloneRows(aug);
+      let row = 0;
+      const pivots = [];
+      for (let col = 0; col < n && row < n; col++) {
+        let pivot = row;
+        for (let r = row + 1; r < n; r++) {
+          if (Math.abs(a[r][col]) > Math.abs(a[pivot][col])) pivot = r;
+        }
+        if (Math.abs(a[pivot][col]) < EPS) continue;
+        [a[row], a[pivot]] = [a[pivot], a[row]];
+        const div = a[row][col];
+        for (let c = col; c <= n; c++) a[row][c] /= div;
+        for (let r = 0; r < n; r++) {
+          if (r === row) continue;
+          const factor = a[r][col];
+          for (let c = col; c <= n; c++) a[r][c] -= factor * a[row][c];
+        }
+        pivots.push(col);
+        row++;
+      }
+      const x = Array(n).fill(0);
+      pivots.forEach((col, r) => {
+        x[col] = a[r][n];
+      });
+      return {
+        kind: rankA === n ? "unique" : "infinite",
+        rankA,
+        rankAug,
+        vector: x
+      };
+    }
+
+    function makeTermInput(id, value, variable, label) {
+      return `
+        <span class="equation-term">
+          <input id="${id}" type="number" step="0.1" value="${fmt(value)}" aria-label="${label}">
+          <span class="variable">${variable}</span>
+        </span>
+      `;
+    }
+
+    function makeResultInput(id, value, label) {
+      return `
+        <span class="equation-term equation-result">
+          <input id="${id}" type="number" step="0.1" value="${fmt(value)}" aria-label="${label}">
+        </span>
+      `;
+    }
+
+    function renderInputs() {
+      const vars = dim === 2 ? ["x", "y"] : ["x", "y", "z"];
+      const rows = [];
+      for (let r = 0; r < dim; r++) {
+        const pieces = vars.map((name, c) => `
+          ${c > 0 ? '<span class="operator">+</span>' : ''}
+          ${makeTermInput(`a${r}${c}`, matrix[r][c], name, `第 ${r + 1} 行 ${name} 的系数`)}
+        `);
+        rows.push(`
+          <div class="equation-row">
+            <span class="row-index">${r + 1}.</span>
+            ${pieces.join("")}
+            <div class="equals">=</div>
+            ${makeResultInput(`b${r}`, target[r], `第 ${r + 1} 行常数`)}
+          </div>
+        `);
+      }
+      elements.equationList.innerHTML = rows.join("");
+      elements.equationList.querySelectorAll("input").forEach((input) => {
+        input.addEventListener("input", readInputs);
+      });
+    }
+
+    function readInputs() {
+      const nextMatrix = [];
+      const nextTarget = [];
+      for (let r = 0; r < dim; r++) {
+        const row = [];
+        for (let c = 0; c < dim; c++) {
+          row.push(Number(document.getElementById(`a${r}${c}`).value) || 0);
+        }
+        nextMatrix.push(row);
+        nextTarget.push(Number(document.getElementById(`b${r}`).value) || 0);
+      }
+      matrix = nextMatrix;
+      target = nextTarget;
+      update();
+    }
+
+    function setProblem(nextDim, nextMatrix, nextTarget) {
+      dim = nextDim;
+      matrix = nextMatrix;
+      target = nextTarget;
+      progress = 0;
+      elements.progress.value = "0";
+      elements.progressText.textContent = "0%";
+      playing = false;
+      updatePlayIcon();
+      renderInputs();
+      updateTabs();
+      update();
+    }
+
+    function usePreset(preset) {
+      const cases = presetCases[preset];
+      if (!cases) return;
+      const index = presetCursor[preset] % cases.length;
+      presetCursor[preset] += 1;
+      const item = cases[index];
+      setProblem(item.dim, cloneRows(item.matrix), item.target.slice());
+    }
+
+    function updateTabs() {
+      document.querySelectorAll(".tab").forEach((tab) => {
+        const active = Number(tab.dataset.dim) === dim;
+        tab.classList.toggle("active", active);
+        tab.setAttribute("aria-selected", String(active));
+      });
+      elements.legendV3.hidden = dim !== 3;
+      elements.viewPanel.hidden = dim !== 3;
+      elements.modeHint.textContent = dim === 2
+        ? "当前是二维情形：两条列向量尝试拼出目标向量 b。"
+        : "当前是三维情形：三条列向量在空间中尝试拼出目标向量 b。";
+    }
+
+    function equationText() {
+      const vars = dim === 2 ? ["x", "y"] : ["x", "y", "z"];
+      return matrix.map((row, r) => {
+        const left = row.map((value, c) => `${fmt(value)}${vars[c]}`).join(" + ");
+        return `${left} = ${fmt(target[r])}`;
+      }).join("<br>");
+    }
+
+    function vectorText(v) {
+      return `(${v.map(fmt).join(", ")})`;
+    }
+
+    function updateReadouts() {
+      solution = solveSystem(matrix, target);
+      const cols = Array.from({ length: dim }, (_, i) => column(matrix, i));
+      elements.equationReadout.innerHTML = equationText();
+      elements.columnsReadout.textContent = cols.map((v, i) => `a${i + 1}=${vectorText(v)}`).join("，");
+      elements.targetReadout.textContent = `b=${vectorText(target)}`;
+
+      elements.statusBox.classList.toggle("warn", solution.kind === "none");
+      if (solution.kind === "unique") {
+        const names = dim === 2 ? ["x", "y"] : ["x", "y", "z"];
+        const pairs = solution.vector.map((value, i) => `${names[i]}=${fmt(value)}`).join("，");
+        elements.statusBox.innerHTML = `<strong>有唯一解</strong><span>${pairs}</span>`;
+        elements.solutionReadout.textContent = `${pairs}，所以 ${solution.vector.map((value, i) => `${fmt(value)}a${i + 1}`).join(" + ")} = b`;
+        elements.explainText.innerHTML = `<strong>方程组有唯一解</strong>，表示目标向量 b 可以用这些列向量唯一地拼出来。未知数就是每支列向量需要乘上的倍数。`;
+        elements.canvasNote.textContent = dim === 2
+          ? "动画按顺序放置 x·a₁ 与 y·a₂，最后正好到达目标向量 b。"
+          : "动画按顺序放置 x·a₁、y·a₂、z·a₃，最后正好到达空间中的目标向量 b。拖动画布可以旋转三维视角。";
+      } else if (solution.kind === "infinite") {
+        elements.statusBox.innerHTML = `<strong>有无穷多解</strong><span>b 在列向量张成的范围内，但表示方式不唯一</span>`;
+        elements.solutionReadout.textContent = `${solution.vector.map((value, i) => `${fmt(value)}a${i + 1}`).join(" + ")} = b 是其中一种表示`;
+        elements.explainText.innerHTML = `<strong>方程组有无穷多解</strong>，说明列向量之间有重复方向。目标 b 能被拼出来，但拼法不止一种。`;
+        elements.canvasNote.textContent = dim === 3
+          ? "列向量有冗余方向，所以同一个目标向量 b 可以由多组系数组合得到。拖动画布可以旋转三维视角。"
+          : "列向量有冗余方向，所以同一个目标向量 b 可以由多组系数组合得到。动画展示其中一种拼法。";
+      } else {
+        elements.statusBox.innerHTML = `<strong>无解</strong><span>b 不在列向量张成的范围内</span>`;
+        elements.solutionReadout.textContent = `rank(A)=${solution.rankA}，rank([A|b])=${solution.rankAug}，所以无法表示 b`;
+        elements.explainText.innerHTML = `<strong>方程组无解</strong>，对应到向量语言，就是无论怎么缩放和相加这些列向量，都到不了目标向量 b。`;
+        elements.canvasNote.textContent = dim === 3
+          ? "浅绿色平面或直线表示列向量能张成的范围；目标向量 b 在这个范围之外，所以方程组无解。拖动画布可以旋转三维视角。"
+          : "组合路径会停在列向量能到达的范围内，而目标向量 b 位于这个范围之外。";
+      }
+    }
+
+    function update() {
+      updateReadouts();
+      draw();
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+
+    function screenInfo() {
+      const rect = canvas.getBoundingClientRect();
+      let scale = Math.min(rect.width, rect.height) / 9;
+      let ox = rect.width / 2;
+      let oy = rect.height / 2 + 20;
+      if (dim === 2) {
+        scale = Math.min(rect.width, rect.height) / (2 * viewRadius2D());
+      } else {
+        const view = viewBox3D(rect.width, rect.height);
+        scale = view.scale;
+        ox = view.ox;
+        oy = view.oy;
+      }
+      return { w: rect.width, h: rect.height, scale, ox, oy };
+    }
+
+    function viewRadius2D() {
+      if (dim !== 2) return 4.5;
+      const points = [[0, 0], target.slice()];
+      const cols = Array.from({ length: dim }, (_, i) => column(matrix, i));
+      cols.forEach((col) => points.push(col));
+      if (solution && solution.kind !== "none" && solution.vector) {
+        let origin = [0, 0];
+        points.push(origin);
+        cols.forEach((col, i) => {
+          origin = vecAdd(origin, vecScale(solution.vector[i], col));
+          points.push(origin);
+        });
+      }
+      const maxAbs = Math.max(1, ...points.flat().map((value) => Math.abs(value)));
+      return Math.max(3.2, maxAbs * 1.35);
+    }
+
+    function viewAngles() {
+      return {
+        yaw: Number(elements.yaw.value) * Math.PI / 180,
+        pitch: Number(elements.pitch.value) * Math.PI / 180
+      };
+    }
+
+    function projectUnit3D(v, angles = viewAngles()) {
+      const x = v[0], y = v[1], z = v[2] || 0;
+      const cy = Math.cos(angles.yaw), sy = Math.sin(angles.yaw);
+      const cp = Math.cos(angles.pitch), sp = Math.sin(angles.pitch);
+      const xFloor = cy * x - sy * y;
+      const yFloor = sy * x + cy * y;
+      const yScreen = yFloor * sp - z * cp;
+      const depth = yFloor * cp + z * sp;
+      const perspective = 1 / Math.max(0.28, 1 + depth * 0.045);
+      return [xFloor * perspective, yScreen * perspective];
+    }
+
+    function viewPoints3D() {
+      const points = [
+        [0, 0, 0],
+        [-4, -4, 0], [4, -4, 0], [4, 4, 0], [-4, 4, 0],
+        [4.3, 0, 0], [0, 4.3, 0], [0, 0, 4.3],
+        target.slice()
+      ];
+      const cols = Array.from({ length: 3 }, (_, i) => column(matrix, i));
+      cols.forEach((col) => points.push(col));
+
+      if (solution && solution.kind !== "none" && solution.vector) {
+        let origin = [0, 0, 0];
+        cols.forEach((col, i) => {
+          const comp = vecScale(solution.vector[i], col);
+          points.push(comp);
+          origin = vecAdd(origin, comp);
+          points.push(origin);
+        });
+      } else if (solution && solution.kind === "none") {
+        const basis = independentSpanVectors(cols);
+        if (basis.length === 1) {
+          const unit = normalize(basis[0]);
+          if (unit) points.push(vecScale(-5, unit), vecScale(5, unit));
+        } else if (basis.length >= 2) {
+          const corners = spanPlaneCorners3D(basis[0], basis[1], 4.4);
+          if (corners) corners.forEach((corner) => points.push(corner));
+        }
+      }
+
+      return points;
+    }
+
+    function viewBox3D(width, height) {
+      const angles = viewAngles();
+      const projected = viewPoints3D().map((point) => projectUnit3D(point, angles));
+      const xs = projected.map((point) => point[0]);
+      const ys = projected.map((point) => point[1]);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      const spanX = Math.max(1, maxX - minX);
+      const spanY = Math.max(1, maxY - minY);
+      const marginX = Math.min(92, Math.max(56, width * 0.1));
+      const marginTop = 86;
+      const marginBottom = 118;
+      const usableW = Math.max(240, width - marginX * 2);
+      const usableH = Math.max(240, height - marginTop - marginBottom);
+      const scale = Math.min(usableW / spanX, usableH / spanY);
+      return {
+        scale,
+        ox: marginX + usableW / 2 - ((minX + maxX) / 2) * scale,
+        oy: marginTop + usableH / 2 - ((minY + maxY) / 2) * scale
+      };
+    }
+
+    function project(v) {
+      const s = screenInfo();
+      if (dim === 2) return [s.ox + v[0] * s.scale, s.oy - v[1] * s.scale];
+      const point = projectUnit3D(v);
+      return [s.ox + point[0] * s.scale, s.oy + point[1] * s.scale];
+    }
+
+    function drawLine(p1, p2, color, width = 1, dash = []) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.setLineDash(dash);
+      ctx.beginPath();
+      ctx.moveTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawArrow(v, color, label, width = 3, origin = Array(dim).fill(0), alpha = 1) {
+      const start = project(origin);
+      const end = project(vecAdd(origin, v));
+      const angle = Math.atan2(end[1] - start[1], end[0] - start[0]);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(start[0], start[1]);
+      ctx.lineTo(end[0], end[1]);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(end[0], end[1]);
+      ctx.lineTo(end[0] - 12 * Math.cos(angle - Math.PI / 7), end[1] - 12 * Math.sin(angle - Math.PI / 7));
+      ctx.lineTo(end[0] - 12 * Math.cos(angle + Math.PI / 7), end[1] - 12 * Math.sin(angle + Math.PI / 7));
+      ctx.closePath();
+      ctx.fill();
+      if (label) {
+        ctx.font = "700 13px Inter, sans-serif";
+        ctx.fillText(label, end[0] + 8, end[1] - 8);
+      }
+      ctx.restore();
+    }
+
+    function drawGrid2D() {
+      const limit = Math.ceil(viewRadius2D());
+      for (let i = -limit; i <= limit; i++) {
+        const main = i === 0;
+        drawLine(project([i, -limit]), project([i, limit]), main ? COLORS.axis : COLORS.grid, main ? 1.5 : 1);
+        drawLine(project([-limit, i]), project([limit, i]), main ? COLORS.axis : COLORS.grid, main ? 1.5 : 1);
+      }
+    }
+
+    function drawGrid3D() {
+      const limit = 4;
+      const p0 = project([-limit, -limit, 0]);
+      const p1 = project([limit, -limit, 0]);
+      const p2 = project([limit, limit, 0]);
+      const p3 = project([-limit, limit, 0]);
+      ctx.save();
+      ctx.fillStyle = "rgba(87,82,68,0.045)";
+      ctx.beginPath();
+      ctx.moveTo(p0[0], p0[1]);
+      ctx.lineTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]);
+      ctx.lineTo(p3[0], p3[1]);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      for (let i = -limit; i <= limit; i++) {
+        drawLine(project([i, -limit, 0]), project([i, limit, 0]), COLORS.grid, 1);
+        drawLine(project([-limit, i, 0]), project([limit, i, 0]), COLORS.grid, 1);
+      }
+      drawArrow([4.3, 0, 0], "rgba(21,21,21,0.58)", "X", 1.8);
+      drawArrow([0, 4.3, 0], "rgba(21,21,21,0.58)", "Y", 1.8);
+      drawArrow([0, 0, 4.3], "rgba(21,21,21,0.58)", "Z", 1.8);
+    }
+
+    function partialComponents() {
+      const n = dim;
+      const coeffs = solution && solution.vector ? solution.vector : Array(n).fill(0);
+      const cols = Array.from({ length: n }, (_, i) => column(matrix, i));
+      const total = progress * n;
+      return cols.map((col, i) => {
+        const local = Math.max(0, Math.min(1, total - i));
+        return vecScale(coeffs[i] * local, col);
+      });
+    }
+
+    function drawPath() {
+      if (!solution || solution.kind === "none" || !solution.vector) return;
+      const comps = partialComponents();
+      let origin = Array(dim).fill(0);
+      comps.forEach((comp, index) => {
+        const color = [COLORS.v1, COLORS.v2, COLORS.v3][index];
+        drawArrow(comp, COLORS.path, `${["x", "y", "z"][index]}a${index + 1}`, 2.6, origin, 0.96);
+        const next = vecAdd(origin, comp);
+        drawLine(project(origin), project(next), color, 1.2, [4, 6]);
+        origin = next;
+      });
+      if (solution.kind === "infinite") {
+        drawLine(project(origin), project(target), COLORS.mutedPath, 2, [6, 6]);
+      }
+    }
+
+    function independentSpanVectors(cols) {
+      const nonzero = cols.filter((col) => norm(col) > EPS);
+      if (!nonzero.length) return [];
+      const first = nonzero[0];
+      const second = nonzero.find((col) => norm(cross(first, col)) > EPS);
+      return second ? [first, second] : [first];
+    }
+
+    function drawSpanLine3D(dir) {
+      const unit = normalize(dir);
+      if (!unit) return;
+      drawLine(project(vecScale(-5, unit)), project(vecScale(5, unit)), COLORS.mutedPath, 5, [8, 6]);
+    }
+
+    function drawSpanPlane3D(u, v) {
+      const corners = spanPlaneCorners3D(u, v, 4.4);
+      if (!corners) {
+        drawSpanLine3D(u);
+        return;
+      }
+      const projectedCorners = corners.map(project);
+      const uUnit = normalize(u);
+      const vOrth = vecSub(v, vecScale(dot(v, uUnit), uUnit));
+      const vUnit = normalize(vOrth);
+      const size = 4.4;
+      ctx.save();
+      ctx.fillStyle = "rgba(79,155,98,0.12)";
+      ctx.strokeStyle = "rgba(79,155,98,0.55)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.moveTo(projectedCorners[0][0], projectedCorners[0][1]);
+      for (let i = 1; i < projectedCorners.length; i++) ctx.lineTo(projectedCorners[i][0], projectedCorners[i][1]);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      for (let i = -4; i <= 4; i++) {
+        const offset = i * 1.1;
+        drawLine(
+          project(vecAdd(vecScale(-size, uUnit), vecScale(offset, vUnit))),
+          project(vecAdd(vecScale(size, uUnit), vecScale(offset, vUnit))),
+          "rgba(79,155,98,0.2)",
+          1
+        );
+        drawLine(
+          project(vecAdd(vecScale(offset, uUnit), vecScale(-size, vUnit))),
+          project(vecAdd(vecScale(offset, uUnit), vecScale(size, vUnit))),
+          "rgba(79,155,98,0.2)",
+          1
+        );
+      }
+    }
+
+    function spanPlaneCorners3D(u, v, size) {
+      const uUnit = normalize(u);
+      if (!uUnit) return null;
+      const vOrth = vecSub(v, vecScale(dot(v, uUnit), uUnit));
+      const vUnit = normalize(vOrth);
+      if (!vUnit) return null;
+      return [
+        vecAdd(vecScale(size, uUnit), vecScale(size, vUnit)),
+        vecAdd(vecScale(-size, uUnit), vecScale(size, vUnit)),
+        vecAdd(vecScale(-size, uUnit), vecScale(-size, vUnit)),
+        vecAdd(vecScale(size, uUnit), vecScale(-size, vUnit))
+      ];
+    }
+
+    function drawUnreachableHint() {
+      if (!solution || solution.kind !== "none") return;
+      const cols = Array.from({ length: dim }, (_, i) => column(matrix, i));
+      if (dim === 2) {
+        const a = cols[0];
+        const b = cols[1];
+        if (norm(a) > EPS || norm(b) > EPS) {
+          const dir = norm(a) >= norm(b) ? a : b;
+          const unit = vecScale(1 / Math.max(norm(dir), EPS), dir);
+          drawLine(project(vecScale(-5, unit)), project(vecScale(5, unit)), COLORS.mutedPath, 4, [8, 6]);
+        }
+      } else {
+        const basis = independentSpanVectors(cols);
+        if (basis.length === 1) drawSpanLine3D(basis[0]);
+        if (basis.length >= 2) drawSpanPlane3D(basis[0], basis[1]);
+      }
+    }
+
+    function draw() {
+      if (!ctx) return;
+      const s = screenInfo();
+      ctx.clearRect(0, 0, s.w, s.h);
+      ctx.fillStyle = "#fbfaf6";
+      ctx.fillRect(0, 0, s.w, s.h);
+
+      if (dim === 2) drawGrid2D();
+      else drawGrid3D();
+
+      const cols = Array.from({ length: dim }, (_, i) => column(matrix, i));
+      if (elements.showPath.checked) {
+        drawUnreachableHint();
+      }
+      if (elements.showColumns.checked) {
+        cols.forEach((col, i) => drawArrow(col, [COLORS.v1, COLORS.v2, COLORS.v3][i], `a${i + 1}`, 3));
+      }
+      if (elements.showPath.checked) {
+        drawPath();
+      }
+      if (elements.showTarget.checked) {
+        drawArrow(target, COLORS.target, "b", 3.6);
+      }
+    }
+
+    function updatePlayIcon() {
+      elements.playIcon.innerHTML = playing
+        ? '<path d="M8 5v14"></path><path d="M16 5v14"></path>'
+        : '<path d="M8 5v14l11-7z"></path>';
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function setViewAngles(yaw, pitch) {
+      const nextYaw = clamp(Math.round(yaw), -180, 180);
+      const nextPitch = clamp(Math.round(pitch), -80, 80);
+      elements.yaw.value = String(nextYaw);
+      elements.pitch.value = String(nextPitch);
+      elements.yawText.textContent = `${nextYaw}°`;
+      elements.pitchText.textContent = `${nextPitch}°`;
+      draw();
+    }
+
+    function pointerPoint(event) {
+      const rect = canvas.getBoundingClientRect();
+      return [event.clientX - rect.left, event.clientY - rect.top];
+    }
+
+    function beginViewDrag(event, source) {
+      if (dim !== 3) return;
+      draggingView = true;
+      dragSource = source;
+      lastPointer = pointerPoint(event);
+      canvas.classList.add("dragging");
+    }
+
+    function moveViewDrag(event, source) {
+      if (!draggingView || dim !== 3) return;
+      const point = pointerPoint(event);
+      const dx = point[0] - lastPointer[0];
+      const dy = point[1] - lastPointer[1];
+      lastPointer = point;
+      setViewAngles(Number(elements.yaw.value) + dx * 0.45, Number(elements.pitch.value) - dy * 0.35);
+    }
+
+    function endViewDrag(source) {
+      if (!draggingView) return;
+      draggingView = false;
+      dragSource = null;
+      canvas.classList.remove("dragging");
+    }
+
+    function animate(time) {
+      if (!lastFrame) lastFrame = time;
+      const dt = Math.min(40, time - lastFrame) / 1000;
+      lastFrame = time;
+      if (playing) {
+        progress += dt * 0.28;
+        if (progress >= 1) {
+          progress = 1;
+          playing = false;
+          updatePlayIcon();
+        }
+        elements.progress.value = String(Math.round(progress * 100));
+        elements.progressText.textContent = `${Math.round(progress * 100)}%`;
+        draw();
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function bindEvents() {
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          if (Number(tab.dataset.dim) === dim) return;
+          if (Number(tab.dataset.dim) === 2) setProblem(2, [[1, 2], [2, -1]], [5, 0]);
+          else setProblem(3, [[3, 0, 0], [0, 2.5, 0], [0, 0, 3]], [3, 5, 3]);
+        });
+      });
+
+      document.querySelectorAll("[data-preset]").forEach((button) => {
+        button.addEventListener("click", () => {
+          usePreset(button.dataset.preset);
+        });
+      });
+
+      elements.progress.addEventListener("input", () => {
+        progress = Number(elements.progress.value) / 100;
+        elements.progressText.textContent = `${Math.round(progress * 100)}%`;
+        playing = false;
+        updatePlayIcon();
+        draw();
+      });
+
+      elements.playButton.addEventListener("click", () => {
+        if (progress >= 1) {
+          progress = 0;
+          elements.progress.value = "0";
+          elements.progressText.textContent = "0%";
+        }
+        playing = !playing;
+        lastFrame = 0;
+        updatePlayIcon();
+      });
+
+      elements.resetButton.addEventListener("click", () => {
+        progress = 0;
+        playing = false;
+        elements.progress.value = "0";
+        elements.progressText.textContent = "0%";
+        updatePlayIcon();
+        draw();
+      });
+
+      [elements.showColumns, elements.showTarget, elements.showPath, elements.yaw, elements.pitch].forEach((control) => {
+        control.addEventListener("input", () => {
+          setViewAngles(Number(elements.yaw.value), Number(elements.pitch.value));
+        });
+        control.addEventListener("change", draw);
+      });
+
+      canvas.addEventListener("pointerdown", (event) => {
+        beginViewDrag(event, "pointer");
+        canvas.setPointerCapture(event.pointerId);
+      });
+
+      canvas.addEventListener("pointermove", (event) => {
+        moveViewDrag(event, "pointer");
+      });
+
+      canvas.addEventListener("pointerup", (event) => {
+        endViewDrag("pointer");
+        canvas.releasePointerCapture(event.pointerId);
+      });
+
+      canvas.addEventListener("pointercancel", () => {
+        endViewDrag("pointer");
+      });
+
+      canvas.addEventListener("mousedown", (event) => {
+        if (draggingView) return;
+        beginViewDrag(event, "mouse");
+      });
+
+      window.addEventListener("mousemove", (event) => {
+        moveViewDrag(event, "mouse");
+      });
+
+      window.addEventListener("mouseup", () => {
+        endViewDrag("mouse");
+      });
+
+      window.addEventListener("resize", resizeCanvas);
+    }
+
+    if (window.location.hash === "#three") {
+      dim = 3;
+      matrix = [[3, 0, 0], [0, 2.5, 0], [0, 0, 3]];
+      target = [3, 5, 3];
+    } else if (window.location.hash === "#three-none") {
+      dim = 3;
+      matrix = [[1, 0, 1], [0, 1, 1], [0, 0, 0]];
+      target = [2, 3, 1];
+    }
+
+    renderInputs();
+    updateTabs();
+    bindEvents();
+    update();
+    resizeCanvas();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

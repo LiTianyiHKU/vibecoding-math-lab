@@ -1,0 +1,1133 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>中心极限定理</title>
+    <link rel="stylesheet" href="../shared-demo-theme.css" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #071018;
+        --panel: rgba(10, 20, 29, 0.82);
+        --panel-strong: rgba(12, 24, 35, 0.96);
+        --line: rgba(174, 204, 220, 0.2);
+        --line-strong: rgba(174, 204, 220, 0.34);
+        --ink: #ecf7fb;
+        --muted: #9db4c3;
+        --cyan: #4fd5c8;
+        --cyan-soft: rgba(79, 213, 200, 0.18);
+        --blue: #88c0ff;
+        --amber: #f3b64c;
+        --orange: #f07d46;
+        --shadow: 0 28px 88px rgba(0, 0, 0, 0.3);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 1220px;
+        min-height: 100vh;
+        color: var(--ink);
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .app {
+        width: min(1560px, calc(100% - 28px));
+        margin: 0 auto;
+        padding: 16px 0 20px;
+      }
+
+      .lab-header {
+        margin-bottom: 16px;
+      }
+
+      .eyebrow {
+        color: var(--cyan);
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: 0.02em;
+      }
+
+      h1 {
+        margin: 6px 0 8px;
+        font-size: clamp(28px, 2.8vw, 42px);
+        line-height: 1.05;
+      }
+
+      .subtitle {
+        margin: 0;
+        max-width: 780px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .stage-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .demo-panel {
+        display: grid;
+        grid-template-rows: auto auto auto auto 1fr;
+        gap: 14px;
+        min-height: 0;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(14, 27, 39, 0.9), rgba(9, 18, 27, 0.82));
+        box-shadow: var(--shadow);
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 86px;
+      }
+
+      .panel-head h2 {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1.2;
+      }
+
+      .panel-head p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .controls {
+        display: grid;
+        padding: 0 !important;
+        overflow: visible !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border: 0 !important;
+      }
+
+      .button-row {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .bulk-button {
+        grid-column: 1 / -1;
+        min-height: 42px;
+        border-color: rgba(243, 182, 76, 0.42);
+        background: rgba(243, 182, 76, 0.13);
+        color: #ffe3ad;
+      }
+
+      button {
+        min-height: 38px;
+        border: 1px solid rgba(174, 204, 220, 0.26);
+        border-radius: 8px;
+        background: rgba(13, 25, 35, 0.9);
+        color: var(--ink);
+        cursor: pointer;
+        font-weight: 800;
+        transition:
+          transform 160ms ease,
+          border-color 160ms ease,
+          background 160ms ease,
+          color 160ms ease;
+      }
+
+      button:hover:not(:disabled) {
+        transform: translateY(-1px);
+        border-color: var(--cyan);
+        background: rgba(79, 213, 200, 0.12);
+      }
+
+      button:disabled {
+        cursor: default;
+        opacity: 0.48;
+      }
+
+      button.active {
+        border-color: var(--amber);
+        background: rgba(243, 182, 76, 0.16);
+        color: #ffe3ad;
+      }
+
+      .visual-band {
+        display: grid;
+        grid-template-rows: auto auto auto;
+        gap: 12px;
+        min-height: 270px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(11, 21, 31, 0.94), rgba(10, 18, 27, 0.78));
+      }
+
+      .visual-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 34px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .status-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: rgba(145, 167, 181, 0.74);
+        box-shadow: 0 0 0 rgba(79, 213, 200, 0);
+        transition: background 160ms ease, box-shadow 160ms ease;
+      }
+
+      .status-pill.running .status-dot {
+        background: var(--cyan);
+        box-shadow: 0 0 18px rgba(79, 213, 200, 0.8);
+      }
+
+      .status-pill.animating .status-dot {
+        background: var(--amber);
+        box-shadow: 0 0 18px rgba(243, 182, 76, 0.9);
+      }
+
+      .status-pill strong {
+        color: var(--ink);
+      }
+
+      .dice-area {
+        display: grid;
+        min-height: 136px;
+        height: 136px;
+        align-items: center;
+      }
+
+      .dice-area.single {
+        place-items: center;
+      }
+
+      .die-single {
+        display: grid;
+        place-items: center;
+        width: 112px;
+        height: 112px;
+        border: 1px solid rgba(174, 204, 220, 0.18);
+        border-radius: 24px;
+        background:
+          radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.1), transparent 35%),
+          linear-gradient(180deg, rgba(17, 33, 46, 0.96), rgba(9, 16, 23, 0.94));
+        color: var(--ink);
+        font-size: 68px;
+        line-height: 1;
+        box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 18px 46px rgba(0, 0, 0, 0.26);
+      }
+
+      .die-single.rolling {
+        color: var(--amber);
+        transform: rotate(-4deg) scale(1.03);
+      }
+
+      .dice-grid {
+        display: grid;
+        grid-template-columns: repeat(10, 38px);
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .die-card {
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        border: 1px solid rgba(174, 204, 220, 0.15);
+        border-radius: 10px;
+        background: rgba(16, 29, 41, 0.88);
+        color: #dff5fb;
+        font-size: 26px;
+        line-height: 1;
+      }
+
+      .die-card.rolling {
+        color: var(--amber);
+      }
+
+      .recent-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .recent-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .recent-chip strong {
+        margin-left: 6px;
+        color: var(--ink);
+        font-size: 13px;
+      }
+
+      .history-panel {
+        display: grid;
+        gap: 6px;
+        min-height: 54px;
+        padding: 8px 10px;
+        border: 1px solid rgba(174, 204, 220, 0.12);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .history-label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .history-list {
+        display: flex;
+        gap: 5px;
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .history-item {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        height: 24px;
+        padding: 0 6px;
+        border: 1px solid rgba(174, 204, 220, 0.16);
+        border-radius: 999px;
+        background: rgba(13, 25, 35, 0.86);
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      .history-item.empty {
+        min-width: 72px;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .stat-card {
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(11, 20, 29, 0.84);
+      }
+
+      .stat-card span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .stat-card strong {
+        display: block;
+        margin-top: 8px;
+        color: var(--ink);
+        font-size: 24px;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .chart-card {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        padding: 12px 12px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(11, 20, 29, 0.84);
+      }
+
+      .chart-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+
+      .chart-head strong {
+        color: var(--ink);
+        font-size: 15px;
+      }
+
+      .chart-head span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .chart-wrap {
+        position: relative;
+        height: 330px;
+        border: 1px solid rgba(174, 204, 220, 0.12);
+        border-radius: 8px;
+        overflow: hidden;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+          rgba(8, 15, 22, 0.84);
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .note-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 16px;
+      }
+
+      .note-card {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(10, 20, 29, 0.82);
+        box-shadow: var(--shadow);
+      }
+
+      .note-card strong {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--ink);
+        font-size: 16px;
+      }
+
+      .note-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.72;
+      }
+
+      @media (max-width: 1380px) {
+        body {
+          min-width: 1120px;
+        }
+
+        .chart-wrap {
+          height: 300px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="lab-header">
+        <div>
+          <div class="eyebrow">概率论 · 骰子实验</div>
+          <h1>中心极限定理</h1>
+          <p class="subtitle">
+            左边每次只记录 <strong>1 个骰子</strong> 的结果，右边每次把 <strong>30 个骰子的平均值</strong>
+            作为一个量来统计。两侧都从 0 开始累计，分别点击各自的开始按钮后，会先看到摇骰子动画，再把结果记入条形图。
+          </p>
+        </div>
+      </header>
+
+      <section class="stage-grid" aria-label="个体分布与均值分布对比">
+        <article class="demo-panel" id="leftPanel">
+          <div class="panel-head">
+            <div>
+              <h2>左侧统计：每次摇 1 个骰子的结果</h2>
+              <p>长期看会接近 1 到 6 的离散均匀分布，每个点出现的机会差不多。</p>
+            </div>
+          </div>
+
+          <section class="controls" aria-label="左侧控制">
+            <div class="button-row">
+              <button type="button" id="leftStart">开始</button>
+              <button type="button" id="leftPause">暂停</button>
+              <button type="button" id="leftStep">单步</button>
+              <button type="button" id="leftReset">重置</button>
+              <button class="bulk-button" type="button" id="leftBulk">直接摇 10000 次！</button>
+            </div>
+          </section>
+
+          <section class="visual-band">
+            <div class="visual-head">
+              <div class="status-pill" id="leftStatus">
+                <span class="status-dot"></span>
+                <span>状态：<strong id="leftStatusText">等待开始</strong></span>
+              </div>
+              <div class="recent-row">
+                <span class="recent-chip">最近结果<strong id="leftRecentValue">—</strong></span>
+              </div>
+            </div>
+            <div class="dice-area single" id="leftDiceArea" aria-label="左侧摇骰动画">
+              <div class="die-single" id="leftDie">•</div>
+            </div>
+            <div class="history-panel" aria-label="左侧最近10次结果">
+              <span class="history-label">最近 10 次点数</span>
+              <div class="history-list" id="leftHistoryList">
+                <span class="history-item empty">暂无</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span>累计实验次数</span>
+              <strong id="leftTrials">0</strong>
+            </div>
+            <div class="stat-card">
+              <span>累计样本数</span>
+              <strong id="leftSamples">0</strong>
+            </div>
+          </div>
+
+          <section class="chart-card">
+            <div class="chart-head">
+              <strong>单个结果的统计柱形图</strong>
+              <span>理论参考：六个点长期接近一样高</span>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="leftChart" aria-label="左侧单个骰子结果柱形图"></canvas>
+            </div>
+          </section>
+        </article>
+
+        <article class="demo-panel" id="rightPanel">
+          <div class="panel-head">
+            <div>
+              <h2>右侧统计：每次取 30 个骰子的平均值</h2>
+              <p>每次先摇出 30 个骰子，再把它们的均值当作一个量来统计，会逐渐形成更集中的钟形。</p>
+            </div>
+          </div>
+
+          <section class="controls" aria-label="右侧控制">
+            <div class="button-row">
+              <button type="button" id="rightStart">开始</button>
+              <button type="button" id="rightPause">暂停</button>
+              <button type="button" id="rightStep">单步</button>
+              <button type="button" id="rightReset">重置</button>
+              <button class="bulk-button" type="button" id="rightBulk">直接摇 10000 次！</button>
+            </div>
+          </section>
+
+          <section class="visual-band">
+            <div class="visual-head">
+              <div class="status-pill" id="rightStatus">
+                <span class="status-dot"></span>
+                <span>状态：<strong id="rightStatusText">等待开始</strong></span>
+              </div>
+              <div class="recent-row">
+                <span class="recent-chip">最近均值<strong id="rightRecentValue">—</strong></span>
+                <span class="recent-chip">本批总和<strong id="rightBatchSum">—</strong></span>
+              </div>
+            </div>
+            <div class="dice-area" id="rightDiceArea" aria-label="右侧30个骰子摇动动画">
+              <div class="dice-grid" id="rightDiceGrid"></div>
+            </div>
+            <div class="history-panel" aria-label="右侧最近10次均值">
+              <span class="history-label">最近 10 次均值</span>
+              <div class="history-list" id="rightHistoryList">
+                <span class="history-item empty">暂无</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span>累计均值次数</span>
+              <strong id="rightTrials">0</strong>
+            </div>
+            <div class="stat-card">
+              <span>每次参与均值的骰子数</span>
+              <strong>30</strong>
+            </div>
+          </div>
+
+          <section class="chart-card">
+            <div class="chart-head">
+              <strong>30 个骰子均值的统计柱形图</strong>
+              <span>理论参考：正态近似曲线会贴近经验直方图</span>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="rightChart" aria-label="右侧30个骰子均值柱形图"></canvas>
+            </div>
+          </section>
+        </article>
+      </section>
+
+      <section class="note-strip" aria-label="教学结论">
+        <article class="note-card">
+          <strong>形状不同</strong>
+          <p>左图统计的是单个结果，柱子会围绕 1 到 6 平均展开；右图统计的是均值，许多随机波动互相抵消后，中间更高、两边更低。</p>
+        </article>
+        <article class="note-card">
+          <strong>中心相同</strong>
+          <p>不管是看单个骰子，还是看 30 个骰子的平均值，中心都仍然在 3.5 附近，所以两图都会围绕同一个位置累积。</p>
+        </article>
+        <article class="note-card">
+          <strong>波动更小</strong>
+          <p>均值把 30 个结果压缩成一个量后，离 3.5 很远的情况会少很多，所以右图更集中，这正是中心极限定理最重要的直观感受。</p>
+        </article>
+      </section>
+    </main>
+
+    <script>
+      const DIE_GLYPHS = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+      const MEAN_CENTER = 3.5;
+      const SINGLE_VARIANCE = 35 / 12;
+      const MEAN_SIGMA = Math.sqrt(SINGLE_VARIANCE / 30);
+      const AUTO_DELAY = 0;
+      const ROLL_FRAME_MS = 28;
+
+      const panels = {
+        left: createPanel({
+          key: "left",
+          sampleSize: 1,
+          canvas: document.getElementById("leftChart"),
+          startBtn: document.getElementById("leftStart"),
+          pauseBtn: document.getElementById("leftPause"),
+          stepBtn: document.getElementById("leftStep"),
+          resetBtn: document.getElementById("leftReset"),
+          bulkBtn: document.getElementById("leftBulk"),
+          status: document.getElementById("leftStatus"),
+          statusText: document.getElementById("leftStatusText"),
+          recentValue: document.getElementById("leftRecentValue"),
+          historyList: document.getElementById("leftHistoryList"),
+          trials: document.getElementById("leftTrials"),
+          samples: document.getElementById("leftSamples"),
+          dieElement: document.getElementById("leftDie"),
+          counts: Array(6).fill(0),
+        }),
+        right: createPanel({
+          key: "right",
+          sampleSize: 30,
+          canvas: document.getElementById("rightChart"),
+          startBtn: document.getElementById("rightStart"),
+          pauseBtn: document.getElementById("rightPause"),
+          stepBtn: document.getElementById("rightStep"),
+          resetBtn: document.getElementById("rightReset"),
+          bulkBtn: document.getElementById("rightBulk"),
+          status: document.getElementById("rightStatus"),
+          statusText: document.getElementById("rightStatusText"),
+          recentValue: document.getElementById("rightRecentValue"),
+          historyList: document.getElementById("rightHistoryList"),
+          batchSum: document.getElementById("rightBatchSum"),
+          trials: document.getElementById("rightTrials"),
+          gridElement: document.getElementById("rightDiceGrid"),
+          counts: Array(25).fill(0),
+          binMin: 1,
+          binMax: 6,
+          binWidth: 0.2,
+        }),
+      };
+
+      initializePanels();
+      resizeAllCharts();
+      window.addEventListener("resize", resizeAllCharts);
+
+      function createPanel(config) {
+        return {
+          ...config,
+          running: false,
+          animating: false,
+          timer: 0,
+          rollTimer: 0,
+          trialsCount: 0,
+          lastValue: null,
+          lastBatch: [],
+          history: [],
+        };
+      }
+
+      function initializePanels() {
+        initializeLeft();
+        initializeRight();
+
+        Object.values(panels).forEach((panel) => {
+          panel.startBtn.addEventListener("click", () => startPanel(panel));
+          panel.pauseBtn.addEventListener("click", () => pausePanel(panel));
+          panel.stepBtn.addEventListener("click", () => stepPanel(panel));
+          panel.resetBtn.addEventListener("click", () => resetPanel(panel));
+          panel.bulkBtn.addEventListener("click", () => runBulk(panel));
+          resetPanel(panel);
+        });
+      }
+
+      function initializeLeft() {
+        panels.left.dieElement.textContent = "•";
+      }
+
+      function initializeRight() {
+        const grid = panels.right.gridElement;
+        const fragment = document.createDocumentFragment();
+        for (let index = 0; index < 30; index += 1) {
+          const cell = document.createElement("div");
+          cell.className = "die-card";
+          cell.textContent = "·";
+          fragment.appendChild(cell);
+        }
+        grid.appendChild(fragment);
+      }
+
+      function startPanel(panel) {
+        if (panel.running) return;
+        panel.running = true;
+        updatePanelState(panel);
+        if (!panel.animating) scheduleNext(panel, 0);
+      }
+
+      function pausePanel(panel) {
+        panel.running = false;
+        clearTimeout(panel.timer);
+        updatePanelState(panel);
+      }
+
+      function stepPanel(panel) {
+        if (panel.animating) return;
+        panel.running = false;
+        clearTimeout(panel.timer);
+        updatePanelState(panel);
+        runCycle(panel);
+      }
+
+      function runBulk(panel) {
+        if (panel.animating) return;
+        panel.running = false;
+        clearTimeout(panel.timer);
+        for (let index = 0; index < 10000; index += 1) {
+          applyResult(panel, rollDice(panel.sampleSize), { refresh: false });
+        }
+        const finalValues = panel.lastBatch.length ? panel.lastBatch : rollDice(panel.sampleSize);
+        renderDice(panel, finalValues, false);
+        updatePanelReadout(panel);
+        renderHistory(panel);
+        updatePanelState(panel);
+        drawPanel(panel);
+      }
+
+      function resetPanel(panel) {
+        panel.running = false;
+        panel.animating = false;
+        panel.trialsCount = 0;
+        panel.lastValue = null;
+        panel.lastBatch = [];
+        panel.history = [];
+        panel.counts.fill(0);
+        clearTimeout(panel.timer);
+        clearInterval(panel.rollTimer);
+        if (panel.key === "left") {
+          panel.dieElement.textContent = "•";
+          panel.dieElement.classList.remove("rolling");
+          panel.samples.textContent = "0";
+        } else {
+          panel.batchSum.textContent = "—";
+          Array.from(panel.gridElement.children).forEach((cell) => {
+            cell.textContent = "·";
+            cell.classList.remove("rolling");
+          });
+        }
+        updatePanelReadout(panel);
+        renderHistory(panel);
+        updatePanelState(panel);
+        drawPanel(panel);
+      }
+
+      function scheduleNext(panel, delay) {
+        clearTimeout(panel.timer);
+        panel.timer = window.setTimeout(() => runCycle(panel), delay);
+      }
+
+      function runCycle(panel) {
+        if (panel.animating) return;
+        panel.animating = true;
+        updatePanelState(panel);
+
+        let frame = 0;
+        const totalFrames = panel.key === "left" ? 12 : 14;
+
+        panel.rollTimer = window.setInterval(() => {
+          frame += 1;
+          const values = rollDice(panel.sampleSize);
+          renderDice(panel, values, true);
+          if (frame >= totalFrames) {
+            clearInterval(panel.rollTimer);
+            const finalValues = rollDice(panel.sampleSize);
+            renderDice(panel, finalValues, false);
+            applyResult(panel, finalValues);
+            panel.animating = false;
+            updatePanelState(panel);
+            if (panel.running) scheduleNext(panel, AUTO_DELAY);
+          }
+        }, ROLL_FRAME_MS);
+      }
+
+      function applyResult(panel, values, options = {}) {
+        panel.trialsCount += 1;
+        panel.lastBatch = values.slice();
+        if (panel.key === "left") {
+          const value = values[0];
+          panel.counts[value - 1] += 1;
+          panel.lastValue = value;
+          panel.history.unshift(String(value));
+          panel.samples.textContent = String(panel.trialsCount);
+        } else {
+          const sum = values.reduce((total, value) => total + value, 0);
+          const mean = sum / values.length;
+          const binIndex = Math.min(
+            panel.counts.length - 1,
+            Math.max(0, Math.floor((mean - panel.binMin) / panel.binWidth))
+          );
+          panel.counts[binIndex] += 1;
+          panel.lastValue = mean;
+          panel.history.unshift(mean.toFixed(2));
+          panel.batchSum.textContent = String(sum);
+        }
+        panel.history = panel.history.slice(0, 10);
+        if (options.refresh !== false) {
+          updatePanelReadout(panel);
+          renderHistory(panel);
+          drawPanel(panel);
+        }
+      }
+
+      function renderDice(panel, values, rolling) {
+        if (panel.key === "left") {
+          panel.dieElement.textContent = DIE_GLYPHS[values[0] - 1];
+          panel.dieElement.classList.toggle("rolling", rolling);
+        } else {
+          Array.from(panel.gridElement.children).forEach((cell, index) => {
+            cell.textContent = DIE_GLYPHS[values[index] - 1];
+            cell.classList.toggle("rolling", rolling);
+          });
+        }
+      }
+
+      function updatePanelReadout(panel) {
+        panel.trials.textContent = String(panel.trialsCount);
+        if (panel.lastValue == null) {
+          panel.recentValue.textContent = "—";
+          return;
+        }
+        if (panel.key === "left") {
+          panel.recentValue.textContent = String(panel.lastValue);
+        } else {
+          panel.recentValue.textContent = panel.lastValue.toFixed(2);
+        }
+      }
+
+      function renderHistory(panel) {
+        if (!panel.history.length) {
+          panel.historyList.innerHTML = '<span class="history-item empty">暂无</span>';
+          return;
+        }
+        panel.historyList.innerHTML = panel.history
+          .map((value) => `<span class="history-item">${value}</span>`)
+          .join("");
+      }
+
+      function updatePanelState(panel) {
+        panel.startBtn.classList.toggle("active", panel.running);
+        panel.pauseBtn.classList.toggle("active", !panel.running && !panel.animating && panel.trialsCount > 0);
+        panel.stepBtn.disabled = panel.animating;
+        panel.resetBtn.disabled = false;
+        panel.bulkBtn.disabled = panel.animating;
+        panel.pauseBtn.disabled = !panel.running && !panel.animating;
+        panel.startBtn.disabled = panel.animating;
+
+        panel.status.classList.toggle("running", panel.running && !panel.animating);
+        panel.status.classList.toggle("animating", panel.animating);
+
+        if (panel.animating) {
+          panel.statusText.textContent = "摇骰中…";
+        } else if (panel.running) {
+          panel.statusText.textContent = "自动运行";
+        } else if (panel.trialsCount > 0) {
+          panel.statusText.textContent = "已暂停";
+        } else {
+          panel.statusText.textContent = "等待开始";
+        }
+      }
+
+      function resizeAllCharts() {
+        Object.values(panels).forEach((panel) => {
+          const rect = panel.canvas.getBoundingClientRect();
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          const width = Math.max(320, Math.round(rect.width));
+          const height = Math.max(260, Math.round(rect.height));
+          panel.canvas.width = Math.round(width * dpr);
+          panel.canvas.height = Math.round(height * dpr);
+          panel.canvas.style.width = `${width}px`;
+          panel.canvas.style.height = `${height}px`;
+          drawPanel(panel);
+        });
+      }
+
+      function drawPanel(panel) {
+        const ctx = panel.canvas.getContext("2d");
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const width = panel.canvas.width / dpr;
+        const height = panel.canvas.height / dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+
+        const padding = { top: 18, right: 18, bottom: 40, left: 50 };
+        const plotWidth = width - padding.left - padding.right;
+        const plotHeight = height - padding.top - padding.bottom;
+
+        ctx.fillStyle = "rgba(8, 15, 22, 0.68)";
+        ctx.fillRect(0, 0, width, height);
+
+        let yMax = 1;
+        let uniformLevel = 0;
+        let curvePeak = 0;
+
+        if (panel.key === "left") {
+          uniformLevel = panel.trialsCount > 0 ? panel.trialsCount / 6 : 0;
+          yMax = Math.max(1, ...panel.counts, uniformLevel) * 1.22;
+        } else {
+          curvePeak = panel.trialsCount > 0 ? normalPdf(MEAN_CENTER, MEAN_CENTER, MEAN_SIGMA) * panel.trialsCount * panel.binWidth : 0;
+          yMax = Math.max(1, ...panel.counts, curvePeak) * 1.22;
+        }
+
+        drawGrid(ctx, padding, plotWidth, plotHeight, yMax);
+
+        if (panel.key === "left") {
+          drawLeftBars(ctx, panel, padding, plotWidth, plotHeight, yMax);
+          drawUniformReference(ctx, panel, padding, plotWidth, plotHeight, yMax, uniformLevel);
+        } else {
+          drawRightBars(ctx, panel, padding, plotWidth, plotHeight, yMax);
+          drawNormalCurve(ctx, panel, padding, plotWidth, plotHeight, yMax);
+        }
+
+        drawCenterLine(ctx, panel, padding, plotWidth, plotHeight);
+        drawAxes(ctx, panel, padding, plotWidth, plotHeight, yMax);
+      }
+
+      function drawGrid(ctx, padding, plotWidth, plotHeight, yMax) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(174, 204, 220, 0.09)";
+        ctx.lineWidth = 1;
+        for (let index = 0; index < 4; index += 1) {
+          const y = padding.top + (plotHeight / 3) * index;
+          ctx.beginPath();
+          ctx.moveTo(padding.left, y);
+          ctx.lineTo(padding.left + plotWidth, y);
+          ctx.stroke();
+        }
+        ctx.fillStyle = "rgba(157, 180, 195, 0.72)";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        [0, yMax / 3, (2 * yMax) / 3, yMax].forEach((value, index) => {
+          const y = padding.top + plotHeight - (plotHeight / 3) * index;
+          ctx.fillText(formatTick(value), padding.left - 8, y);
+        });
+        ctx.restore();
+      }
+
+      function drawLeftBars(ctx, panel, padding, plotWidth, plotHeight, yMax) {
+        const slotWidth = plotWidth / 6;
+        const barWidth = slotWidth * 0.64;
+        panel.counts.forEach((count, index) => {
+          const x = padding.left + index * slotWidth + (slotWidth - barWidth) / 2;
+          const heightValue = (count / yMax) * plotHeight;
+          const y = padding.top + plotHeight - heightValue;
+          const gradient = ctx.createLinearGradient(0, y, 0, y + heightValue);
+          gradient.addColorStop(0, "rgba(79, 213, 200, 0.98)");
+          gradient.addColorStop(1, "rgba(47, 118, 210, 0.78)");
+          ctx.fillStyle = gradient;
+          roundRect(ctx, x, y, barWidth, heightValue, 8);
+          ctx.fill();
+        });
+      }
+
+      function drawRightBars(ctx, panel, padding, plotWidth, plotHeight, yMax) {
+        const slotWidth = plotWidth / panel.counts.length;
+        const barWidth = Math.max(3, slotWidth * 0.86);
+        panel.counts.forEach((count, index) => {
+          const x = padding.left + index * slotWidth + (slotWidth - barWidth) / 2;
+          const heightValue = (count / yMax) * plotHeight;
+          const y = padding.top + plotHeight - heightValue;
+          const gradient = ctx.createLinearGradient(0, y, 0, y + heightValue);
+          gradient.addColorStop(0, "rgba(243, 182, 76, 0.98)");
+          gradient.addColorStop(1, "rgba(240, 125, 70, 0.78)");
+          ctx.fillStyle = gradient;
+          roundRect(ctx, x, y, barWidth, heightValue, 4);
+          ctx.fill();
+        });
+      }
+
+      function drawUniformReference(ctx, panel, padding, plotWidth, plotHeight, yMax, uniformLevel) {
+        if (!uniformLevel) return;
+        const y = padding.top + plotHeight - (uniformLevel / yMax) * plotHeight;
+        ctx.save();
+        ctx.strokeStyle = "rgba(136, 192, 255, 0.92)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([7, 6]);
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(padding.left + plotWidth, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(136, 192, 255, 0.96)";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("理论均匀高度", padding.left + 10, Math.max(padding.top + 14, y - 8));
+        ctx.restore();
+      }
+
+      function drawNormalCurve(ctx, panel, padding, plotWidth, plotHeight, yMax) {
+        if (!panel.trialsCount) return;
+        ctx.save();
+        ctx.strokeStyle = "rgba(136, 192, 255, 0.96)";
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        for (let pixel = 0; pixel <= plotWidth; pixel += 2) {
+          const xValue = panel.binMin + (pixel / plotWidth) * (panel.binMax - panel.binMin);
+          const expectedCount = normalPdf(xValue, MEAN_CENTER, MEAN_SIGMA) * panel.trialsCount * panel.binWidth;
+          const y = padding.top + plotHeight - (expectedCount / yMax) * plotHeight;
+          const x = padding.left + pixel;
+          if (pixel === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.fillStyle = "rgba(136, 192, 255, 0.98)";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("正态近似", padding.left + plotWidth - 78, padding.top + 18);
+        ctx.restore();
+      }
+
+      function drawCenterLine(ctx, panel, padding, plotWidth, plotHeight) {
+        const ratio = panel.key === "left" ? 0.5 : (MEAN_CENTER - panel.binMin) / (panel.binMax - panel.binMin);
+        const x = padding.left + plotWidth * ratio;
+        ctx.save();
+        ctx.strokeStyle = "rgba(243, 182, 76, 0.88)";
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(x, padding.top);
+        ctx.lineTo(x, padding.top + plotHeight);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "rgba(243, 182, 76, 0.98)";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText("中心 3.5", Math.min(x + 6, padding.left + plotWidth - 48), padding.top + 16);
+        ctx.restore();
+      }
+
+      function drawAxes(ctx, panel, padding, plotWidth, plotHeight, yMax) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(174, 204, 220, 0.3)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, padding.top);
+        ctx.lineTo(padding.left, padding.top + plotHeight);
+        ctx.lineTo(padding.left + plotWidth, padding.top + plotHeight);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(236, 247, 251, 0.9)";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+
+        if (panel.key === "left") {
+          const slotWidth = plotWidth / 6;
+          for (let value = 1; value <= 6; value += 1) {
+            const x = padding.left + slotWidth * (value - 0.5);
+            ctx.fillText(String(value), x, padding.top + plotHeight + 10);
+          }
+          ctx.fillText("骰子点数", padding.left + plotWidth / 2, padding.top + plotHeight + 26);
+        } else {
+          [1, 2, 3, 4, 5, 6].forEach((value) => {
+            const x = padding.left + ((value - panel.binMin) / (panel.binMax - panel.binMin)) * plotWidth;
+            ctx.fillText(String(value), x, padding.top + plotHeight + 10);
+          });
+          ctx.fillText("30 个骰子的平均值", padding.left + plotWidth / 2, padding.top + plotHeight + 26);
+        }
+
+        ctx.save();
+        ctx.translate(14, padding.top + plotHeight / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(panel.key === "left" ? "出现次数" : "均值出现次数", 0, 0);
+        ctx.restore();
+        ctx.restore();
+      }
+
+      function roundRect(ctx, x, y, width, height, radius) {
+        const r = Math.min(radius, width / 2, height / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + width, y, x + width, y + height, r);
+        ctx.arcTo(x + width, y + height, x, y + height, r);
+        ctx.arcTo(x, y + height, x, y, r);
+        ctx.arcTo(x, y, x + width, y, r);
+        ctx.closePath();
+      }
+
+      function rollDice(count) {
+        return Array.from({ length: count }, () => 1 + Math.floor(Math.random() * 6));
+      }
+
+      function normalPdf(x, mean, sigma) {
+        const z = (x - mean) / sigma;
+        return Math.exp(-0.5 * z * z) / (sigma * Math.sqrt(2 * Math.PI));
+      }
+
+      function formatTick(value) {
+        if (value >= 10) return Math.round(value).toString();
+        if (value >= 1) return value.toFixed(1).replace(/\.0$/, "");
+        return value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+      }
+    </script>
+  </body>
+</html>

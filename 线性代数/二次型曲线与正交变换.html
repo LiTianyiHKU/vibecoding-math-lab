@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>二次型曲线与正交变换</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f4ee;
+      --ink: #171717;
+      --muted: #68635a;
+      --line: #d8d2c4;
+      --soft: #ede8dc;
+      --panel: #ffffff;
+      --accent: #0f766e;
+      --accent-dark: #0b5f58;
+      --curve: #14532d;
+      --u-axis: #dc2626;
+      --v-axis: #2563eb;
+      --eig-vector: #7c3aed;
+      --old-axis: rgba(21, 21, 21, 0.52);
+      --shadow: 0 18px 45px rgba(34, 30, 18, 0.1);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.08), transparent 34%),
+        linear-gradient(215deg, rgba(37, 99, 235, 0.07), transparent 38%),
+        var(--bg);
+      color: var(--ink);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1480px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 24px 0 34px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 3.1vw, 50px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .intro {
+      margin: 0;
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .status {
+      min-width: 220px;
+      padding: 13px 15px;
+      border: 1px solid rgba(15, 118, 110, 0.28);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.76);
+      box-shadow: var(--shadow);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .status strong {
+      display: block;
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(560px, 1fr) 430px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .stage,
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 680px;
+      background: #fbfaf6;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 680px;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .legend {
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: calc(100% - 32px);
+      pointer-events: none;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 9px;
+      border: 1px solid rgba(216, 211, 197, 0.85);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.86);
+      color: #424039;
+      font-size: 12px;
+      line-height: 1;
+      backdrop-filter: blur(8px);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .display-controls {
+      position: absolute;
+      left: 16px;
+      top: 58px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      max-width: calc(100% - 32px);
+      z-index: 2;
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 32px;
+      padding: 6px 9px;
+      border: 1px solid rgba(216, 211, 197, 0.9);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.88);
+      color: #424039;
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+      backdrop-filter: blur(8px);
+    }
+
+    .toggle input {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .note {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      padding: 12px 14px;
+      border: 1px solid rgba(216, 211, 197, 0.9);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.88);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      backdrop-filter: blur(8px);
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .button,
+    .icon-button {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+      min-height: 38px;
+      padding: 0 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 140ms ease, border-color 140ms ease;
+    }
+
+    .icon-button {
+      width: 42px;
+      padding: 0;
+    }
+
+    .button:hover,
+    .icon-button:hover {
+      border-color: #bdb5a3;
+      background: #f8f6ef;
+    }
+
+    .button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .button svg,
+    .icon-button svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .progress {
+      display: grid;
+      gap: 6px;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .sidebar {
+      display: grid;
+      gap: 12px;
+    }
+
+    .panel-header {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
+    .panel-body {
+      padding: 14px;
+    }
+
+    .equation-edit {
+      display: grid;
+      gap: 12px;
+    }
+
+    .formula-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfaf6;
+    }
+
+    .formula-term {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .formula-term input[type="number"] {
+      width: 66px;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 7px;
+      text-align: center;
+      outline: none;
+    }
+
+    .formula-term input[type="number"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+    }
+
+    .math-symbol {
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 750;
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .mini {
+      min-height: 34px;
+      padding: 0 10px;
+      font-size: 13px;
+    }
+
+    .readout {
+      display: grid;
+      gap: 8px;
+    }
+
+    .readout-line {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfaf6;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .readout-line span:first-child {
+      color: var(--muted);
+    }
+
+    .math {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      color: #2a2925;
+      word-break: break-word;
+    }
+
+    .explain {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .explain strong {
+      color: var(--ink);
+    }
+
+    @media (max-width: 1120px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        width: min(100vw - 20px, 720px);
+        padding-top: 16px;
+      }
+
+      header,
+      .sidebar,
+      .timeline {
+        grid-template-columns: 1fr;
+      }
+
+      .canvas-wrap {
+        min-height: 540px;
+      }
+
+      canvas {
+        height: 540px;
+      }
+
+      .legend,
+      .display-controls {
+        left: 12px;
+        right: 12px;
+        max-width: none;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="../shared-demo-theme.css" />
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>二次型曲线与正交变换</h1>
+        <p class="intro">含有交叉项的二次型曲线可以看成坐标轴选歪了。通过旋转到一组正交的特征方向上，交叉项会消失，曲线变成标准型。</p>
+      </div>
+      <div class="status" id="statusBox">
+        <strong>正在计算</strong>
+        <span>等待输入</span>
+      </div>
+    </header>
+
+    <section class="layout">
+      <div class="stage">
+        <div class="canvas-wrap">
+          <canvas id="scene" aria-label="二次型曲线和正交坐标系动画"></canvas>
+          <div class="legend" aria-hidden="true">
+            <div class="legend-item" style="color: var(--curve)"><span class="dot"></span>二次型曲线</div>
+            <div class="legend-item" style="color: var(--u-axis)"><span class="dot"></span>新坐标轴 u</div>
+            <div class="legend-item" style="color: var(--v-axis)"><span class="dot"></span>新坐标轴 v</div>
+            <div class="legend-item" style="color: var(--eig-vector)"><span class="dot"></span>特征向量</div>
+            <div class="legend-item" style="color: var(--old-axis)"><span class="dot"></span>原坐标轴 x/y</div>
+          </div>
+          <div class="display-controls">
+            <label class="toggle"><input id="showOriginalAxes" type="checkbox" checked />原坐标轴</label>
+            <label class="toggle"><input id="showRotatingAxes" type="checkbox" checked />正交新轴</label>
+            <label class="toggle"><input id="showEigenvectors" type="checkbox" checked />特征向量</label>
+            <label class="toggle"><input id="showGrid" type="checkbox" checked />网格</label>
+          </div>
+          <div class="note" id="canvasNote">绿色曲线表示同一个二次型等值线。播放动画时，红蓝坐标轴旋转到特征方向，交叉项逐渐消失。</div>
+        </div>
+        <div class="timeline">
+          <button class="icon-button" id="playButton" aria-label="播放或暂停动画" title="播放或暂停">
+            <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+          </button>
+          <div class="progress">
+            <div class="progress-label"><span>正交变换进度</span><span id="progressText">0%</span></div>
+            <input id="progress" type="range" min="0" max="100" value="0" />
+          </div>
+          <button class="button mini" id="resetButton" title="重置动画">
+            <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v6h6"></path></svg>
+            重置
+          </button>
+        </div>
+      </div>
+
+      <aside class="sidebar">
+        <section class="panel">
+          <div class="panel-header"><h2>输入二次型</h2></div>
+          <div class="panel-body equation-edit">
+            <div class="formula-row" aria-label="输入 ax²+bxy+cy²=1 的系数">
+              <span class="formula-term"><input id="coefA" type="number" step="0.1" value="1" aria-label="x 平方系数 a"><span class="math-symbol">x²</span></span>
+              <span class="math-symbol">+</span>
+              <span class="formula-term"><input id="coefB" type="number" step="0.1" value="-1" aria-label="xy 交叉项系数 b"><span class="math-symbol">xy</span></span>
+              <span class="math-symbol">+</span>
+              <span class="formula-term"><input id="coefC" type="number" step="0.1" value="1" aria-label="y 平方系数 c"><span class="math-symbol">y²</span></span>
+              <span class="math-symbol">= 1</span>
+            </div>
+            <p class="hint">其中矩阵形式是 xᵀAx=1，A = [[a, b/2], [b/2, c]]。</p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header"><h2>示例</h2></div>
+          <div class="panel-body">
+            <div class="preset-grid">
+              <button class="button mini" data-preset="ellipse">椭圆：有交叉项</button>
+              <button class="button mini" data-preset="circle">圆：无需旋转</button>
+              <button class="button mini" data-preset="hyperbola">双曲线</button>
+              <button class="button mini" data-preset="parallel">退化/抛物式</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header"><h2>自动计算</h2></div>
+          <div class="panel-body readout">
+            <div class="readout-line"><span>矩阵 A</span><div class="math" id="matrixReadout"></div></div>
+            <div class="readout-line"><span>特征值</span><div class="math" id="eigenReadout"></div></div>
+            <div class="readout-line"><span>旋转角</span><div class="math" id="angleReadout"></div></div>
+            <div class="readout-line"><span>标准型</span><div class="math" id="standardReadout"></div></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header"><h2>几何解释</h2></div>
+          <div class="panel-body">
+            <p class="explain" id="explainText">交叉项 xy 表示原来的 x/y 坐标轴不是这条曲线最自然的方向。把坐标轴旋转到特征向量方向后，二次型只剩 u² 和 v²。</p>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("scene");
+    const ctx = canvas.getContext("2d");
+    const elements = {
+      statusBox: document.getElementById("statusBox"),
+      coefA: document.getElementById("coefA"),
+      coefB: document.getElementById("coefB"),
+      coefC: document.getElementById("coefC"),
+      matrixReadout: document.getElementById("matrixReadout"),
+      eigenReadout: document.getElementById("eigenReadout"),
+      angleReadout: document.getElementById("angleReadout"),
+      standardReadout: document.getElementById("standardReadout"),
+      explainText: document.getElementById("explainText"),
+      canvasNote: document.getElementById("canvasNote"),
+      progress: document.getElementById("progress"),
+      progressText: document.getElementById("progressText"),
+      playButton: document.getElementById("playButton"),
+      playIcon: document.getElementById("playIcon"),
+      resetButton: document.getElementById("resetButton"),
+      showOriginalAxes: document.getElementById("showOriginalAxes"),
+      showRotatingAxes: document.getElementById("showRotatingAxes"),
+      showEigenvectors: document.getElementById("showEigenvectors"),
+      showGrid: document.getElementById("showGrid")
+    };
+
+    const COLORS = {
+      grid: "rgba(87,82,68,0.16)",
+      axis: "rgba(21,21,21,0.52)",
+      curve: "#14532d",
+      u: "#dc2626",
+      v: "#2563eb",
+      eigen: "#7c3aed",
+      eigenSoft: "rgba(124,58,237,0.32)",
+      oldAxis: "rgba(21,21,21,0.52)"
+    };
+
+    const EPS = 1e-9;
+    let progress = 0;
+    let playing = false;
+    let lastFrame = 0;
+    let analysis = null;
+
+    function fmt(value) {
+      if (!Number.isFinite(value)) return "—";
+      if (Math.abs(value) < 1e-9) return "0";
+      return String(Math.round(value * 1000) / 1000);
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function ease(t) {
+      return t * t * (3 - 2 * t);
+    }
+
+    function normalize(v) {
+      const length = Math.hypot(v[0], v[1]);
+      return length < EPS ? [1, 0] : [v[0] / length, v[1] / length];
+    }
+
+    function dot(u, v) {
+      return u[0] * v[0] + u[1] * v[1];
+    }
+
+    function readCoefficients() {
+      return {
+        a: Number(elements.coefA.value) || 0,
+        b: Number(elements.coefB.value) || 0,
+        c: Number(elements.coefC.value) || 0
+      };
+    }
+
+    function eigenvectorFor(lambda, a, h, c) {
+      let v;
+      if (Math.abs(h) > Math.abs(a - lambda)) v = [h, lambda - a];
+      else v = [lambda - c, h];
+      if (Math.hypot(v[0], v[1]) < EPS) {
+        v = Math.abs(a - lambda) < Math.abs(c - lambda) ? [1, 0] : [0, 1];
+      }
+      return normalize(v);
+    }
+
+    function analyze() {
+      const { a, b, c } = readCoefficients();
+      const h = b / 2;
+      const trace = a + c;
+      const gap = Math.hypot(a - c, b);
+      const l1 = (trace + gap) / 2;
+      const l2 = (trace - gap) / 2;
+      let u = eigenvectorFor(l1, a, h, c);
+      let v = [-u[1], u[0]];
+      if (Math.abs(dot(v, eigenvectorFor(l2, a, h, c))) < 0.5) v = [u[1], -u[0]];
+      let angle = Math.atan2(u[1], u[0]);
+      if (angle > Math.PI / 2) angle -= Math.PI;
+      if (angle < -Math.PI / 2) angle += Math.PI;
+      const determinant = a * c - h * h;
+      const type = classify(l1, l2);
+      return { a, b, c, h, l1, l2, u, v, angle, determinant, type };
+    }
+
+    function classify(l1, l2) {
+      if (l1 > EPS && l2 > EPS) return "ellipse";
+      if (l1 < -EPS && l2 < -EPS) return "empty";
+      if (l1 * l2 < -EPS) return "hyperbola";
+      return "degenerate";
+    }
+
+    function screenInfo() {
+      const rect = canvas.getBoundingClientRect();
+      const radius = viewRadius();
+      const scale = Math.min(rect.width, rect.height) / (2 * radius);
+      return { w: rect.width, h: rect.height, scale, ox: rect.width / 2, oy: rect.height / 2 + 18, radius };
+    }
+
+    function viewRadius() {
+      if (!analysis) return 4;
+      const values = [Math.abs(analysis.l1), Math.abs(analysis.l2)].filter((value) => value > EPS);
+      const min = values.length ? Math.min(...values) : 1;
+      const semi = 1 / Math.sqrt(min);
+      if (analysis.type === "ellipse") return clamp(semi * 1.45, 3, 8);
+      if (analysis.type === "degenerate") return 5;
+      return 5.2;
+    }
+
+    function toScreen(p) {
+      const s = screenInfo();
+      return [s.ox + p[0] * s.scale, s.oy - p[1] * s.scale];
+    }
+
+    function fromEigen(u, v) {
+      return [
+        u * analysis.u[0] + v * analysis.v[0],
+        u * analysis.u[1] + v * analysis.v[1]
+      ];
+    }
+
+    function qValue(x, y) {
+      return analysis.a * x * x + analysis.b * x * y + analysis.c * y * y - 1;
+    }
+
+    function quadraticValue(vec) {
+      const x = vec[0];
+      const y = vec[1];
+      return analysis.a * x * x + analysis.b * x * y + analysis.c * y * y;
+    }
+
+    function bilinearValue(u, v) {
+      return analysis.a * u[0] * v[0] + analysis.h * (u[0] * v[1] + u[1] * v[0]) + analysis.c * u[1] * v[1];
+    }
+
+    function rotatedCoefficients(theta) {
+      const u = [Math.cos(theta), Math.sin(theta)];
+      const v = [-Math.sin(theta), Math.cos(theta)];
+      return {
+        a: quadraticValue(u),
+        b: 2 * bilinearValue(u, v),
+        c: quadraticValue(v)
+      };
+    }
+
+    function formatSignedTerm(value, label, first = false) {
+      if (first) return `${fmt(value)}${label}`;
+      const sign = value < 0 ? " - " : " + ";
+      return `${sign}${fmt(Math.abs(value))}${label}`;
+    }
+
+    function standardText() {
+      return `${formatSignedTerm(analysis.l1, "u²", true)}${formatSignedTerm(analysis.l2, "v²")} = 1`;
+    }
+
+    function drawLine(p1, p2, color, width = 1, dash = []) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.setLineDash(dash);
+      ctx.beginPath();
+      ctx.moveTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawArrow(dir, color, label, width = 2.4, dash = []) {
+      const s = screenInfo();
+      const unit = normalize(dir);
+      const end = toScreen([unit[0] * s.radius * 0.92, unit[1] * s.radius * 0.92]);
+      const start = toScreen([unit[0] * -s.radius * 0.92, unit[1] * -s.radius * 0.92]);
+      const angle = Math.atan2(end[1] - start[1], end[0] - start[0]);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = width;
+      ctx.setLineDash(dash);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(start[0], start[1]);
+      ctx.lineTo(end[0], end[1]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(end[0], end[1]);
+      ctx.lineTo(end[0] - 12 * Math.cos(angle - Math.PI / 7), end[1] - 12 * Math.sin(angle - Math.PI / 7));
+      ctx.lineTo(end[0] - 12 * Math.cos(angle + Math.PI / 7), end[1] - 12 * Math.sin(angle + Math.PI / 7));
+      ctx.closePath();
+      ctx.fill();
+      if (label) {
+        ctx.font = "700 13px Inter, sans-serif";
+        ctx.fillText(label, end[0] + 8, end[1] - 8);
+      }
+      ctx.restore();
+    }
+
+    function drawVectorFromOrigin(vec, color, label, width = 3) {
+      const s = screenInfo();
+      const start = toScreen([0, 0]);
+      const end = toScreen([vec[0] * s.radius * 0.34, vec[1] * s.radius * 0.34]);
+      const angle = Math.atan2(end[1] - start[1], end[0] - start[0]);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(start[0], start[1]);
+      ctx.lineTo(end[0], end[1]);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(end[0], end[1]);
+      ctx.lineTo(end[0] - 12 * Math.cos(angle - Math.PI / 7), end[1] - 12 * Math.sin(angle - Math.PI / 7));
+      ctx.lineTo(end[0] - 12 * Math.cos(angle + Math.PI / 7), end[1] - 12 * Math.sin(angle + Math.PI / 7));
+      ctx.closePath();
+      ctx.fill();
+      ctx.font = "700 13px Inter, sans-serif";
+      ctx.fillText(label, end[0] + 8, end[1] - 8);
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      const s = screenInfo();
+      const limit = Math.ceil(s.radius);
+      for (let i = -limit; i <= limit; i++) {
+        const main = i === 0;
+        drawLine(toScreen([i, -limit]), toScreen([i, limit]), main ? COLORS.axis : COLORS.grid, main ? 1.4 : 1);
+        drawLine(toScreen([-limit, i]), toScreen([limit, i]), main ? COLORS.axis : COLORS.grid, main ? 1.4 : 1);
+      }
+    }
+
+    function drawContour() {
+      if (!analysis) return;
+      const s = screenInfo();
+      const limit = s.radius;
+      const n = 132;
+      const step = (2 * limit) / n;
+      ctx.save();
+      ctx.strokeStyle = COLORS.curve;
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          const x = -limit + i * step;
+          const y = -limit + j * step;
+          const p = [
+            { p: [x, y], f: qValue(x, y) },
+            { p: [x + step, y], f: qValue(x + step, y) },
+            { p: [x + step, y + step], f: qValue(x + step, y + step) },
+            { p: [x, y + step], f: qValue(x, y + step) }
+          ];
+          const hits = [];
+          for (let e = 0; e < 4; e++) {
+            const p1 = p[e];
+            const p2 = p[(e + 1) % 4];
+            if ((p1.f <= 0 && p2.f >= 0) || (p1.f >= 0 && p2.f <= 0)) {
+              const denom = p1.f - p2.f;
+              if (Math.abs(denom) > EPS) {
+                const t = p1.f / denom;
+                hits.push([
+                  p1.p[0] + (p2.p[0] - p1.p[0]) * t,
+                  p1.p[1] + (p2.p[1] - p1.p[1]) * t
+                ]);
+              }
+            }
+          }
+          if (hits.length === 2) {
+            drawLine(toScreen(hits[0]), toScreen(hits[1]), COLORS.curve, 3);
+          } else if (hits.length === 4) {
+            drawLine(toScreen(hits[0]), toScreen(hits[1]), COLORS.curve, 3);
+            drawLine(toScreen(hits[2]), toScreen(hits[3]), COLORS.curve, 3);
+          }
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawCurrentAxes() {
+      const s = screenInfo();
+      if (elements.showOriginalAxes.checked) {
+        drawArrow([1, 0], COLORS.oldAxis, "x", 1.8, [7, 7]);
+        drawArrow([0, 1], COLORS.oldAxis, "y", 1.8, [7, 7]);
+      }
+      if (elements.showEigenvectors.checked) {
+        drawLine(toScreen([0, 0]), toScreen([analysis.u[0] * s.radius * 0.36, analysis.u[1] * s.radius * 0.36]), COLORS.eigenSoft, 8);
+        drawLine(toScreen([0, 0]), toScreen([analysis.v[0] * s.radius * 0.36, analysis.v[1] * s.radius * 0.36]), COLORS.eigenSoft, 8);
+        drawVectorFromOrigin(analysis.u, COLORS.u, "p₁");
+        drawVectorFromOrigin(analysis.v, COLORS.v, "p₂");
+      }
+      if (elements.showRotatingAxes.checked) {
+        const theta = analysis.angle * ease(progress);
+        const u = [Math.cos(theta), Math.sin(theta)];
+        const v = [-Math.sin(theta), Math.cos(theta)];
+        drawArrow(u, COLORS.u, progress >= 0.98 ? "u" : "旋转中的 u", 2.8);
+        drawArrow(v, COLORS.v, progress >= 0.98 ? "v" : "旋转中的 v", 2.8);
+      }
+    }
+
+    function updateReadouts() {
+      analysis = analyze();
+      const { a, b, c, h, l1, l2, angle, type } = analysis;
+      const thetaNow = angle * ease(progress);
+      const crossNow = rotatedCoefficients(thetaNow).b;
+      elements.matrixReadout.textContent = `[[${fmt(a)}, ${fmt(h)}], [${fmt(h)}, ${fmt(c)}]]`;
+      elements.eigenReadout.textContent = `λ₁=${fmt(l1)}，λ₂=${fmt(l2)}`;
+      elements.angleReadout.textContent = `θ≈${fmt(angle * 180 / Math.PI)}°`;
+      elements.standardReadout.textContent = standardText();
+
+      if (type === "ellipse") {
+        elements.statusBox.innerHTML = "<strong>椭圆</strong><span>正定二次型，可旋转成标准椭圆</span>";
+      } else if (type === "hyperbola") {
+        elements.statusBox.innerHTML = "<strong>双曲线</strong><span>一个特征值为正，一个为负</span>";
+      } else if (type === "empty") {
+        elements.statusBox.innerHTML = "<strong>无实曲线</strong><span>左侧总为负，无法等于 1</span>";
+      } else {
+        elements.statusBox.innerHTML = "<strong>退化曲线</strong><span>某个方向上的二次项消失</span>";
+      }
+
+      elements.canvasNote.textContent = `当前动画中交叉项约为 ${fmt(crossNow)}uv；进度到 100% 时，新坐标系下只剩 ${standardText().replace(" = 1", "")}。`;
+      elements.explainText.innerHTML = `<strong>正交变换</strong>本质上只是旋转坐标轴，不拉伸也不扭曲图形。矩阵 A 的两个正交特征向量给出最自然的新坐标轴，特征值就是标准型中 u²、v² 前面的系数。`;
+    }
+
+    function draw() {
+      if (!ctx) return;
+      updateReadouts();
+      const s = screenInfo();
+      ctx.clearRect(0, 0, s.w, s.h);
+      ctx.fillStyle = "#fbfaf6";
+      ctx.fillRect(0, 0, s.w, s.h);
+      if (elements.showGrid.checked) drawGrid();
+      drawContour();
+      drawCurrentAxes();
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+
+    function setCoefficients(a, b, c) {
+      elements.coefA.value = String(a);
+      elements.coefB.value = String(b);
+      elements.coefC.value = String(c);
+      progress = 0;
+      elements.progress.value = "0";
+      elements.progressText.textContent = "0%";
+      playing = false;
+      updatePlayIcon();
+      draw();
+    }
+
+    function updatePlayIcon() {
+      elements.playIcon.innerHTML = playing
+        ? '<path d="M8 5v14"></path><path d="M16 5v14"></path>'
+        : '<path d="M8 5v14l11-7z"></path>';
+    }
+
+    function animate(time) {
+      if (!lastFrame) lastFrame = time;
+      const dt = Math.min(40, time - lastFrame) / 1000;
+      lastFrame = time;
+      if (playing) {
+        progress += dt * 0.28;
+        if (progress >= 1) {
+          progress = 1;
+          playing = false;
+          updatePlayIcon();
+        }
+        elements.progress.value = String(Math.round(progress * 100));
+        elements.progressText.textContent = `${Math.round(progress * 100)}%`;
+        draw();
+      }
+      requestAnimationFrame(animate);
+    }
+
+    [elements.coefA, elements.coefB, elements.coefC].forEach((input) => {
+      input.addEventListener("input", draw);
+    });
+
+    [elements.showOriginalAxes, elements.showRotatingAxes, elements.showEigenvectors, elements.showGrid].forEach((control) => {
+      control.addEventListener("change", draw);
+    });
+
+    document.querySelectorAll("[data-preset]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const preset = button.dataset.preset;
+        if (preset === "ellipse") setCoefficients(1, -1, 1);
+        if (preset === "circle") setCoefficients(1, 0, 1);
+        if (preset === "hyperbola") setCoefficients(1, 2, -1);
+        if (preset === "parallel") setCoefficients(1, -2, 1);
+      });
+    });
+
+    elements.progress.addEventListener("input", () => {
+      progress = Number(elements.progress.value) / 100;
+      elements.progressText.textContent = `${Math.round(progress * 100)}%`;
+      playing = false;
+      updatePlayIcon();
+      draw();
+    });
+
+    elements.playButton.addEventListener("click", () => {
+      if (progress >= 1) {
+        progress = 0;
+        elements.progress.value = "0";
+        elements.progressText.textContent = "0%";
+      }
+      playing = !playing;
+      lastFrame = 0;
+      updatePlayIcon();
+    });
+
+    elements.resetButton.addEventListener("click", () => {
+      progress = 0;
+      playing = false;
+      elements.progress.value = "0";
+      elements.progressText.textContent = "0%";
+      updatePlayIcon();
+      draw();
+    });
+
+    window.addEventListener("resize", resizeCanvas);
+
+    draw();
+    resizeCanvas();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
