@@ -15,6 +15,7 @@ import {
 import Aurora from './react-bits/Aurora.jsx';
 import GradientText from './react-bits/GradientText.jsx';
 import SpotlightCard from './react-bits/SpotlightCard.jsx';
+import brandLogoUrl from './assets/brand-logo.png?inline';
 import './styles.css';
 
 const subjects = {
@@ -235,7 +236,7 @@ function Header({ activeSubject }) {
   return (
     <header className="topbar">
       <button type="button" className="brand" onClick={() => setRoute('/')}>
-        <span className="brand-mark"><Sigma size={22} strokeWidth={2.4} /></span>
+        <span className="brand-mark"><img className="brand-logo" src={brandLogoUrl} alt="" /></span>
         <span>Visual Math Lab</span>
       </button>
       <nav className="subject-nav" aria-label="学科导航">
