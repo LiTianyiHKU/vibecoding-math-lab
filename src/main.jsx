@@ -275,11 +275,12 @@ function HomeSurface({ demos: visibleDemos, theme, activeSubject }) {
       </section>
 
       <section className="module-section" id="modules" aria-label="知识点模块">
-        <div className="section-head">
-          <div>
-            <h2>{activeSubject ? `${subjects[activeSubject].name}知识点` : '选择一个知识点模块'}</h2>
-            <p>点击模块后会进入对应交互页面，顶部学科导航、主题色和背景结构保持一致。</p>
-          </div>
+        <div className={`section-head${activeSubject ? '' : ' section-head--count-only'}`}>
+          {activeSubject && (
+            <div>
+              <h2>{`${subjects[activeSubject].name}知识点`}</h2>
+            </div>
+          )}
           <div className="section-count">{visibleDemos.length} 个模块</div>
         </div>
         <ModuleGrid demos={visibleDemos} />

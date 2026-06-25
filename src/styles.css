@@ -242,6 +242,10 @@ a {
   margin-bottom: 18px;
 }
 
+.section-head--count-only {
+  justify-content: flex-end;
+}
+
 .section-head h2 {
   margin: 0;
   font-size: clamp(28px, 3vw, 44px);
