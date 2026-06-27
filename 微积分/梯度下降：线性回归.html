@@ -1,0 +1,1586 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>梯度下降：线性回归</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #061018;
+      --panel: rgba(9, 22, 34, 0.88);
+      --panel-2: rgba(12, 29, 43, 0.9);
+      --panel-3: rgba(15, 37, 54, 0.74);
+      --ink: #eefaff;
+      --muted: #9db6c5;
+      --muted-2: #6f8897;
+      --line: rgba(171, 213, 229, 0.18);
+      --line-strong: rgba(187, 229, 240, 0.34);
+      --cyan: #42d9e8;
+      --teal: #57e5c1;
+      --blue: #58a6ff;
+      --green: #78ee8b;
+      --amber: #ffb743;
+      --danger: #ff6f9a;
+      --shadow: 0 26px 78px rgba(0, 0, 0, 0.34);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background:
+        radial-gradient(circle at 18% 4%, rgba(66, 217, 232, 0.18), transparent 30%),
+        radial-gradient(circle at 78% 22%, rgba(120, 238, 139, 0.12), transparent 30%),
+        linear-gradient(135deg, #061018 0%, #071725 48%, #08131e 100%);
+      color: var(--ink);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(236, 247, 251, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(236, 247, 251, 0.045) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: linear-gradient(to bottom, #000, rgba(0, 0, 0, 0.42), transparent 96%);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    .app {
+      width: min(1780px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 20px 0 28px;
+    }
+
+    .top {
+      display: grid;
+      grid-template-columns: minmax(210px, 0.62fr) minmax(0, 1.42fr) minmax(310px, 0.8fr);
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      color: #bfeefa;
+      font-weight: 850;
+      line-height: 1.2;
+    }
+
+    .brand-icon {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(66, 217, 232, 0.36);
+      border-radius: var(--radius);
+      background: rgba(66, 217, 232, 0.08);
+      color: var(--cyan);
+      box-shadow: 0 14px 34px rgba(66, 217, 232, 0.12);
+    }
+
+    .brand-icon svg {
+      width: 23px;
+      height: 23px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .brand small {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    h1 {
+      margin: 0;
+      text-align: center;
+      color: #f7fdff;
+      font-size: clamp(28px, 2.55vw, 42px);
+      line-height: 1.05;
+      letter-spacing: 0;
+      white-space: nowrap;
+      text-shadow: 0 18px 52px rgba(66, 217, 232, 0.16);
+    }
+
+    .formula-chip {
+      min-width: 0;
+      padding: 10px 13px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: rgba(8, 18, 29, 0.76);
+      box-shadow: var(--shadow);
+      color: #dff7ff;
+      font-size: clamp(12px, 0.94vw, 15px);
+      line-height: 1.45;
+      white-space: nowrap;
+    }
+
+    .formula-title {
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .latex-render {
+      color: #f2fbff;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: clamp(17px, 1.35vw, 23px);
+      font-weight: 800;
+      line-height: 1.25;
+      white-space: normal;
+    }
+
+    .latex-render sub {
+      font-size: 0.62em;
+    }
+
+    .latex-render var {
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-style: italic;
+      font-weight: 800;
+    }
+
+    .formula-bracket {
+      display: inline-block;
+      padding-left: 0.08em;
+      letter-spacing: 0.01em;
+    }
+
+    .formula-tail {
+      white-space: nowrap;
+    }
+
+    .frac {
+      display: inline-grid;
+      grid-template-rows: auto auto;
+      vertical-align: middle;
+      min-width: 2.4em;
+      margin: 0 0.1em;
+      text-align: center;
+      line-height: 1.02;
+    }
+
+    .frac .top-frac {
+      padding: 0 0.12em 0.12em;
+      border-bottom: 1px solid currentColor;
+    }
+
+    .frac .bottom-frac {
+      padding: 0.12em 0.12em 0;
+    }
+
+    .formula-note {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(410px, 0.95fr) minmax(500px, 1.06fr) minmax(310px, 390px);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .panel,
+    .stage,
+    .control-card,
+    .lesson-flow {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .stage {
+      min-height: 555px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 52px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(18, 43, 61, 0.8), rgba(9, 22, 34, 0.52));
+    }
+
+    h2 {
+      margin: 0;
+      color: #f3fbff;
+      font-size: clamp(17px, 1.34vw, 22px);
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .mini-tool {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 6px 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: rgba(9, 20, 31, 0.7);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 820;
+    }
+
+    .canvas-shell {
+      position: relative;
+      height: 420px;
+      background:
+        radial-gradient(circle at 52% 44%, rgba(66, 217, 232, 0.08), transparent 48%),
+        linear-gradient(rgba(255, 255, 255, 0.025), transparent),
+        #071522;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .legend {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      z-index: 2;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: calc(100% - 28px);
+      pointer-events: none;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      padding: 6px 9px;
+      border: 1px solid rgba(171, 213, 229, 0.2);
+      border-radius: 7px;
+      background: rgba(5, 14, 23, 0.62);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      backdrop-filter: blur(10px);
+    }
+
+    .swatch {
+      width: 16px;
+      height: 4px;
+      border-radius: 99px;
+      background: currentColor;
+      box-shadow: 0 0 16px currentColor;
+    }
+
+    .swatch.dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .current-line {
+      color: var(--green);
+    }
+
+    .sample-dot {
+      color: var(--cyan);
+    }
+
+    .path-line {
+      color: var(--amber);
+    }
+
+    .readout-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border-top: 1px solid var(--line);
+      background: rgba(4, 13, 21, 0.32);
+    }
+
+    .readout-row.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .readout {
+      min-height: 54px;
+      padding: 10px 12px;
+      border-right: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      text-align: center;
+    }
+
+    .readout:last-child {
+      border-right: 0;
+    }
+
+    .readout strong {
+      display: block;
+      margin-top: 4px;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: clamp(14px, 1.2vw, 18px);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .calc-row {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 1.1fr);
+      gap: 0;
+      border-top: 1px solid var(--line);
+      background: rgba(4, 13, 21, 0.32);
+    }
+
+    .calc-card {
+      min-height: 70px;
+      padding: 10px 12px;
+      border-right: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .calc-card:last-child {
+      border-right: 0;
+    }
+
+    .calc-card strong,
+    .calc-line {
+      display: block;
+      margin-top: 5px;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: clamp(11px, 0.88vw, 14px);
+      line-height: 1.42;
+      font-variant-numeric: tabular-nums;
+      white-space: normal;
+    }
+
+    .calc-alpha {
+      color: #a7f3d0;
+      font-weight: 950;
+      text-shadow: 0 0 14px rgba(167, 243, 208, 0.18);
+    }
+
+    .calc-gradient {
+      color: var(--amber);
+      font-weight: 950;
+      text-shadow: 0 0 14px rgba(255, 183, 67, 0.18);
+    }
+
+    .calc-result {
+      color: var(--teal);
+      font-weight: 950;
+    }
+
+    .calc-current {
+      color: #f2fbff;
+      font-weight: 950;
+    }
+
+    .sidebar {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .control-card {
+      padding: 10px;
+    }
+
+    .control-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .control-title h2 {
+      font-size: 18px;
+    }
+
+    .control-value {
+      color: var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 15px;
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .range-shell {
+      display: grid;
+      gap: 7px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--teal);
+    }
+
+    .range-scale {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted-2);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label,
+    .metric label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      min-height: 35px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: rgba(4, 13, 21, 0.44);
+      color: var(--ink);
+      outline: none;
+      padding: 0 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 14px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="number"]:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(87, 229, 193, 0.12);
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.055);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 850;
+      transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(87, 229, 193, 0.55);
+      background: rgba(87, 229, 193, 0.1);
+    }
+
+    .button.primary {
+      border-color: rgba(120, 238, 139, 0.6);
+      background: linear-gradient(135deg, rgba(72, 195, 92, 0.9), rgba(87, 229, 193, 0.74));
+      box-shadow: 0 13px 30px rgba(87, 229, 193, 0.18);
+    }
+
+    .button.blue {
+      border-color: rgba(88, 166, 255, 0.62);
+      background: linear-gradient(135deg, rgba(48, 118, 224, 0.9), rgba(88, 166, 255, 0.72));
+    }
+
+    .button svg {
+      width: 17px;
+      height: 17px;
+      fill: currentColor;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .metric-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .metric {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 34px;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(4, 13, 21, 0.3);
+    }
+
+    .metric strong {
+      color: var(--teal);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric .amber {
+      color: var(--amber);
+    }
+
+    .gradient-box {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(4, 13, 21, 0.34);
+    }
+
+    .gradient-symbol {
+      color: #e9f8ff;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: 21px;
+      font-weight: 800;
+    }
+
+    .gradient-values {
+      display: grid;
+      gap: 4px;
+      color: var(--teal);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.35;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .direction-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .arrow-strip {
+      position: relative;
+      width: 72px;
+      height: 10px;
+    }
+
+    .arrow-strip::before,
+    .arrow-strip::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      width: 38px;
+      height: 4px;
+      border-radius: 99px;
+      background: var(--amber);
+      box-shadow: 0 0 16px rgba(255, 183, 67, 0.42);
+    }
+
+    .arrow-strip::before {
+      left: 2px;
+      transform: rotate(8deg);
+    }
+
+    .arrow-strip::after {
+      right: 2px;
+      transform: rotate(-8deg);
+    }
+
+    .lesson-flow {
+      margin-top: 10px;
+      padding: 12px 18px 12px;
+    }
+
+    .lesson-flow h2 {
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .flow-card {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 11px;
+      min-height: 98px;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(8, 20, 31, 0.62);
+    }
+
+    .step-number {
+      display: grid;
+      place-items: center;
+      width: 31px;
+      height: 31px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--green), var(--teal));
+      color: #042014;
+      font-size: 16px;
+      font-weight: 950;
+      box-shadow: 0 0 22px rgba(87, 229, 193, 0.2);
+    }
+
+    .flow-card:nth-of-type(3) .step-number {
+      background: linear-gradient(135deg, #59b7ff, #42d9e8);
+    }
+
+    .flow-card:nth-of-type(5) .step-number {
+      background: linear-gradient(135deg, #ffcf68, #ff9e36);
+    }
+
+    .flow-card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #eaffff;
+      font-size: 17px;
+      line-height: 1.15;
+    }
+
+    .flow-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.55;
+    }
+
+    .flow-arrow {
+      display: grid;
+      place-items: center;
+      color: rgba(220, 240, 246, 0.78);
+      font-size: 32px;
+      font-weight: 350;
+    }
+
+    .note {
+      margin-top: 10px;
+      color: var(--muted-2);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1260px) {
+      .top {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        text-align: left;
+        white-space: normal;
+      }
+
+      .formula-chip {
+        min-width: 0;
+        white-space: normal;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .canvas-shell {
+        height: min(62vh, 560px);
+        min-height: 430px;
+      }
+
+      .sidebar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        width: min(100% - 20px, 1780px);
+        padding-top: 14px;
+      }
+
+      .brand {
+        min-width: 0;
+      }
+
+      h1 {
+        font-size: 31px;
+        line-height: 1.12;
+      }
+
+      .formula-chip {
+        font-size: 12px;
+      }
+
+      .panel-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .readout-row,
+      .field-grid,
+      .button-grid,
+      .sidebar,
+      .flow-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-arrow {
+        display: none;
+      }
+
+      .canvas-shell {
+        height: 430px;
+        min-height: 430px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="top">
+      <div class="brand" aria-label="数学可视化实验室">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M9 3h6" />
+            <path d="M10 3v5.6L4.8 18a2.3 2.3 0 0 0 2 3.4h10.4a2.3 2.3 0 0 0 2-3.4L14 8.6V3" />
+            <path d="M8.2 15.2h7.6" />
+          </svg>
+        </div>
+        <div>
+          数学可视化实验室
+          <small>多元函数梯度的应用</small>
+        </div>
+      </div>
+      <h1>梯度下降：从身高体重数据找到最佳直线</h1>
+      <div class="formula-chip" aria-label="损失函数计算">
+        <div class="formula-title">损失函数 J 的计算</div>
+        <div class="latex-render">
+          <var>J</var>(<var>k</var>,<var>b</var>) =
+          <span class="frac"><span class="top-frac">1</span><span class="bottom-frac">2<var>m</var></span></span>
+          <span class="formula-bracket">[(<var>k</var><var>h</var><sub>1</sub>+<var>b</var>−<var>z</var><sub>1</sub>)²
+          <span class="formula-tail">+ ... + (<var>k</var><var>h</var><sub><var>m</var></sub>+<var>b</var>−<var>z</var><sub><var>m</var></sub>)²]</span></span>
+        </div>
+        <div class="formula-note"><var>h</var> 表示标准化身高，<var>z</var> 表示体重，预测值 <var>ẑ</var> = <var>k</var><var>h</var>+<var>b</var></div>
+      </div>
+    </header>
+
+    <section class="layout" aria-label="梯度下降线性回归实验台">
+      <article class="stage">
+        <div class="panel-head">
+          <h2>数据空间：身高-体重散点与拟合直线</h2>
+          <span class="mini-tool">样本点 m = <span id="sampleCount">50</span></span>
+        </div>
+        <div class="canvas-shell">
+          <div class="legend" aria-hidden="true">
+            <span class="legend-item sample-dot"><span class="swatch dot"></span>样本点</span>
+            <span class="legend-item current-line"><span class="swatch"></span>当前直线</span>
+            <span class="legend-item path-line"><span class="swatch"></span>残差</span>
+          </div>
+          <canvas id="dataCanvas" width="760" height="560" aria-label="身高体重散点图和拟合直线"></canvas>
+        </div>
+        <div class="readout-row two">
+          <div class="readout">当前 k（斜率）<strong id="kReadout">0.0000</strong></div>
+          <div class="readout">当前 b（截距）<strong id="bReadout">0.0000</strong></div>
+        </div>
+      </article>
+
+      <article class="stage">
+        <div class="panel-head">
+          <h2>参数空间：损失函数 J(k,b) 的等高线与下降路径</h2>
+          <span class="mini-tool">颜色越亮，损失越小</span>
+        </div>
+        <div class="canvas-shell">
+          <div class="legend" aria-hidden="true">
+            <span class="legend-item"><span class="swatch" style="color: var(--amber)"></span>迭代路径</span>
+            <span class="legend-item"><span class="swatch dot" style="color: #fff26a"></span>最优参数</span>
+          </div>
+          <canvas id="lossCanvas" width="760" height="560" aria-label="损失函数等高线和梯度下降路径"></canvas>
+        </div>
+        <div class="calc-row">
+          <div class="calc-card">当前梯度<strong id="gradientSummary">∇J(k,b)=(0.0000, 0.0000)</strong></div>
+          <div class="calc-card">预测下一步 k<span class="calc-line" id="nextKCalc">kₙ₊₁ = kₙ − α·∂J/∂k</span></div>
+          <div class="calc-card">预测下一步 b<span class="calc-line" id="nextBCalc">bₙ₊₁ = bₙ − α·∂J/∂b</span></div>
+        </div>
+      </article>
+
+      <aside class="sidebar">
+        <section class="control-card">
+          <div class="control-title">
+            <h2>超参数</h2>
+            <span class="control-value" id="alphaValue">0.080</span>
+          </div>
+          <div class="range-shell">
+            <label for="alphaSlider">学习率 α</label>
+            <input id="alphaSlider" type="range" min="-3" max="-0.25" step="0.01" value="-1.10" />
+            <div class="range-scale"><span>0.001</span><span>0.01</span><span>0.1</span><span>0.56</span></div>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="initialW">初始 k₀</label>
+              <input id="initialW" type="number" min="-25" max="25" step="0.1" value="-8.0" />
+            </div>
+            <div class="field">
+              <label for="initialB">初始 b₀</label>
+              <input id="initialB" type="number" min="20" max="130" step="0.5" value="50.0" />
+            </div>
+          </div>
+        </section>
+
+        <section class="control-card">
+          <div class="control-title">
+            <h2>控制面板</h2>
+            <span class="control-value" id="statusText">已暂停</span>
+          </div>
+          <div class="button-grid">
+            <button class="button primary" id="playBtn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+              播放
+            </button>
+            <button class="button blue" id="pauseBtn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>
+              暂停
+            </button>
+            <button class="button" id="stepBtn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5v14l8-7zM15 5h3v14h-3z" /></svg>
+              单步下降
+            </button>
+            <button class="button" id="resetBtn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v6h-6" fill="none" /></svg>
+              重置
+            </button>
+          </div>
+        </section>
+
+        <section class="control-card">
+          <div class="control-title">
+            <h2>运行状态</h2>
+            <span class="control-value" id="convergeText">迭代中</span>
+          </div>
+          <div class="metric-list">
+            <div class="metric"><label>迭代次数 n</label><strong id="sideIter">0</strong></div>
+            <div class="metric"><label>当前损失 J(k,b)</label><strong id="sideLoss">0.0000</strong></div>
+            <div class="metric"><label>均方误差 MSE</label><strong id="sideMse">0.0000</strong></div>
+            <div class="metric"><label>到最优点距离</label><strong class="amber" id="distanceReadout">0.0000</strong></div>
+          </div>
+        </section>
+
+        <section class="control-card">
+          <div class="control-title">
+            <h2>梯度信息</h2>
+          </div>
+          <div class="gradient-box">
+            <div class="gradient-symbol">∇J(k,b)=</div>
+            <div class="gradient-values">
+              <span id="gradK">∂J/∂k = 0.0000</span>
+              <span id="gradB">∂J/∂b = 0.0000</span>
+            </div>
+          </div>
+          <div class="direction-row">
+            <span>更新方向：负梯度 −∇J</span>
+            <span class="arrow-strip" aria-hidden="true"></span>
+          </div>
+        </section>
+      </aside>
+    </section>
+
+    <section class="lesson-flow" aria-label="梯度下降三步理解流程">
+      <h2>实验流程：三步理解梯度下降</h2>
+      <div class="flow-grid">
+        <article class="flow-card">
+          <span class="step-number">1</span>
+          <div>
+            <strong>猜一条线</strong>
+            <p>先给出一组参数 (k,b)，它决定当前预测直线 ẑ=kh+b，并产生每个点的残差。</p>
+          </div>
+        </article>
+        <div class="flow-arrow">→</div>
+        <article class="flow-card">
+          <span class="step-number">2</span>
+          <div>
+            <strong>看误差坡度</strong>
+            <p>损失函数 J(k,b) 像一座山谷，梯度 ∇J 指向上升最快的方向。</p>
+          </div>
+        </article>
+        <div class="flow-arrow">→</div>
+        <article class="flow-card">
+          <span class="step-number">3</span>
+          <div>
+            <strong>沿负梯度下山</strong>
+            <p>按 k←k−α∂J/∂k，b←b−α∂J/∂b 更新，重复直到损失接近最小。</p>
+          </div>
+        </article>
+      </div>
+      <div class="note">说明：为了让课堂演示中的学习率更稳定，计算中使用标准化身高 h=(身高−170)/10；图中横轴仍按真实身高 cm 展示，体重记为 z。</div>
+    </section>
+  </main>
+
+  <script>
+    const dataCanvas = document.getElementById('dataCanvas');
+    const lossCanvas = document.getElementById('lossCanvas');
+    const dctx = dataCanvas.getContext('2d');
+    const lctx = lossCanvas.getContext('2d');
+
+    const alphaSlider = document.getElementById('alphaSlider');
+    const alphaValue = document.getElementById('alphaValue');
+    const initialW = document.getElementById('initialW');
+    const initialB = document.getElementById('initialB');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const stepBtn = document.getElementById('stepBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const els = {
+      sampleCount: document.getElementById('sampleCount'),
+      kReadout: document.getElementById('kReadout'),
+      bReadout: document.getElementById('bReadout'),
+      gradientSummary: document.getElementById('gradientSummary'),
+      nextKCalc: document.getElementById('nextKCalc'),
+      nextBCalc: document.getElementById('nextBCalc'),
+      statusText: document.getElementById('statusText'),
+      convergeText: document.getElementById('convergeText'),
+      sideIter: document.getElementById('sideIter'),
+      sideLoss: document.getElementById('sideLoss'),
+      sideMse: document.getElementById('sideMse'),
+      distanceReadout: document.getElementById('distanceReadout'),
+      gradK: document.getElementById('gradK'),
+      gradB: document.getElementById('gradB')
+    };
+
+    const rawData = [
+      [138, 52], [140, 55], [142, 61], [144, 57], [145, 64],
+      [147, 58], [149, 69], [150, 62], [151, 67], [153, 65],
+      [154, 73], [155, 69], [156, 77], [158, 71], [159, 76],
+      [160, 73], [162, 78], [163, 80], [164, 77], [165, 84],
+      [166, 82], [168, 87], [169, 79], [170, 86], [171, 89],
+      [172, 84], [174, 91], [175, 88], [176, 94], [177, 89],
+      [178, 96], [180, 92], [181, 98], [182, 95], [184, 100],
+      [185, 96], [186, 103], [188, 99], [189, 104], [190, 101],
+      [192, 106], [193, 102], [194, 109], [195, 105], [197, 111],
+      [198, 108], [200, 113], [201, 107], [203, 116], [205, 112]
+    ].map(([height, weight]) => ({ x: height, h: (height - 170) / 10, z: weight }));
+
+    const data = rawData;
+    const maxIter = 500;
+    const bounds = {
+      xMin: 134,
+      xMax: 209,
+      yMin: 38,
+      yMax: 122,
+      wMin: -16,
+      wMax: 22,
+      bMin: 35,
+      bMax: 112
+    };
+
+    let state = {
+      w: Number(initialW.value),
+      b: Number(initialB.value),
+      iter: 0,
+      path: [],
+      playing: false,
+      raf: 0,
+      lastStep: 0
+    };
+
+    els.sampleCount.textContent = data.length;
+
+    const mean = values => values.reduce((sum, value) => sum + value, 0) / values.length;
+    const hMean = mean(data.map(point => point.h));
+    const zMean = mean(data.map(point => point.z));
+    const wOpt = data.reduce((sum, point) => sum + (point.h - hMean) * (point.z - zMean), 0) /
+      data.reduce((sum, point) => sum + (point.h - hMean) ** 2, 0);
+    const bOpt = zMean - wOpt * hMean;
+
+    function predict(point, w = state.w, b = state.b) {
+      return w * point.h + b;
+    }
+
+    function lossAt(w, b) {
+      return data.reduce((sum, point) => {
+        const residual = w * point.h + b - point.z;
+        return sum + residual * residual;
+      }, 0) / (2 * data.length);
+    }
+
+    function gradientAt(w, b) {
+      const sums = data.reduce((acc, point) => {
+        const residual = w * point.h + b - point.z;
+        acc.w += residual * point.h;
+        acc.b += residual;
+        return acc;
+      }, { w: 0, b: 0 });
+      return {
+        w: sums.w / data.length,
+        b: sums.b / data.length
+      };
+    }
+
+    function getAlpha() {
+      return 10 ** Number(alphaSlider.value);
+    }
+
+    function format(value, digits = 4) {
+      return Number.isFinite(value) ? value.toFixed(digits) : '—';
+    }
+
+    function resizeCanvas(canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.max(320, Math.floor(rect.width * ratio));
+      const height = Math.max(320, Math.floor(rect.height * ratio));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      return { width, height, ratio };
+    }
+
+    function dataScale(width, height) {
+      const pad = {
+        left: width * 0.105,
+        right: width * 0.075,
+        top: height * 0.18,
+        bottom: height * 0.12
+      };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+      return {
+        pad,
+        x: value => pad.left + ((value - bounds.xMin) / (bounds.xMax - bounds.xMin)) * plotW,
+        y: value => pad.top + (1 - (value - bounds.yMin) / (bounds.yMax - bounds.yMin)) * plotH,
+        plotW,
+        plotH
+      };
+    }
+
+    function lossScale(width, height) {
+      const pad = {
+        left: width * 0.12,
+        right: width * 0.09,
+        top: height * 0.17,
+        bottom: height * 0.12
+      };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+      return {
+        pad,
+        x: value => pad.left + ((value - bounds.wMin) / (bounds.wMax - bounds.wMin)) * plotW,
+        y: value => pad.top + (1 - (value - bounds.bMin) / (bounds.bMax - bounds.bMin)) * plotH,
+        plotW,
+        plotH
+      };
+    }
+
+    function drawGrid(ctx, scale, width, height, xTicks, yTicks, labelX, labelY) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(171, 213, 229, 0.08)';
+      ctx.lineWidth = 1;
+      ctx.font = `${Math.round(width * 0.018)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+      ctx.fillStyle = 'rgba(210, 230, 238, 0.7)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      xTicks.forEach(tick => {
+        const px = scale.x(tick);
+        ctx.beginPath();
+        ctx.moveTo(px, scale.pad.top);
+        ctx.lineTo(px, height - scale.pad.bottom);
+        ctx.stroke();
+        ctx.fillText(String(tick), px, height - scale.pad.bottom + 9);
+      });
+
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      yTicks.forEach(tick => {
+        const py = scale.y(tick);
+        ctx.beginPath();
+        ctx.moveTo(scale.pad.left, py);
+        ctx.lineTo(width - scale.pad.right, py);
+        ctx.stroke();
+        ctx.fillText(String(tick), scale.pad.left - 9, py);
+      });
+
+      ctx.strokeStyle = 'rgba(221, 243, 248, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(scale.pad.left, scale.pad.top - 8);
+      ctx.lineTo(scale.pad.left, height - scale.pad.bottom);
+      ctx.lineTo(width - scale.pad.right + 8, height - scale.pad.bottom);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(232, 248, 252, 0.86)';
+      ctx.font = `700 ${Math.round(width * 0.019)}px Inter, sans-serif`;
+      ctx.textAlign = 'right';
+      ctx.fillText(labelX, width - scale.pad.right + 5, height - scale.pad.bottom + 34);
+      ctx.textAlign = 'left';
+      ctx.fillText(labelY, scale.pad.left - 4, scale.pad.top - 42);
+      ctx.restore();
+    }
+
+    function drawData() {
+      const { width, height } = resizeCanvas(dataCanvas);
+      const scale = dataScale(width, height);
+      dctx.clearRect(0, 0, width, height);
+
+      const bg = dctx.createLinearGradient(0, 0, 0, height);
+      bg.addColorStop(0, '#081927');
+      bg.addColorStop(1, '#06121d');
+      dctx.fillStyle = bg;
+      dctx.fillRect(0, 0, width, height);
+
+      drawGrid(dctx, scale, width, height, [140, 150, 160, 170, 180, 190, 200], [40, 60, 80, 100, 120], '身高 h (cm)', '体重 z (kg)');
+
+      dctx.save();
+      dctx.lineWidth = 1.25;
+      dctx.setLineDash([7, 5]);
+      data.forEach(point => {
+        const px = scale.x(point.x);
+        const py = scale.y(point.z);
+        const predY = scale.y(predict(point));
+        dctx.strokeStyle = 'rgba(255, 183, 67, 0.72)';
+        dctx.beginPath();
+        dctx.moveTo(px, py);
+        dctx.lineTo(px, predY);
+        dctx.stroke();
+      });
+      dctx.restore();
+
+      const xA = bounds.xMin;
+      const xB = bounds.xMax;
+      const yA = state.w * ((xA - 170) / 10) + state.b;
+      const yB = state.w * ((xB - 170) / 10) + state.b;
+      dctx.save();
+      dctx.strokeStyle = '#78ee8b';
+      dctx.lineWidth = Math.max(3, width * 0.004);
+      dctx.shadowColor = 'rgba(120, 238, 139, 0.44)';
+      dctx.shadowBlur = 14;
+      dctx.beginPath();
+      dctx.moveTo(scale.x(xA), scale.y(yA));
+      dctx.lineTo(scale.x(xB), scale.y(yB));
+      dctx.stroke();
+      dctx.restore();
+
+      data.forEach(point => {
+        const px = scale.x(point.x);
+        const py = scale.y(point.z);
+        const r = Math.max(4, width * 0.006);
+        dctx.save();
+        dctx.fillStyle = 'rgba(66, 217, 232, 0.94)';
+        dctx.strokeStyle = 'rgba(211, 255, 255, 0.58)';
+        dctx.lineWidth = 1.2;
+        dctx.shadowColor = 'rgba(66, 217, 232, 0.55)';
+        dctx.shadowBlur = 12;
+        dctx.beginPath();
+        dctx.arc(px, py, r, 0, Math.PI * 2);
+        dctx.fill();
+        dctx.stroke();
+        dctx.restore();
+      });
+
+      const focusPoint = data[Math.min(data.length - 1, Math.max(0, Math.floor(state.iter / 7) % data.length))];
+      const focusX = scale.x(focusPoint.x);
+      const focusY = scale.y(focusPoint.z);
+      const focusPredY = scale.y(predict(focusPoint));
+      dctx.save();
+      dctx.strokeStyle = 'rgba(234, 245, 250, 0.72)';
+      dctx.setLineDash([5, 4]);
+      dctx.lineWidth = 1.5;
+      dctx.beginPath();
+      dctx.moveTo(focusX, focusY);
+      dctx.lineTo(focusX, focusPredY);
+      dctx.stroke();
+      dctx.fillStyle = 'rgba(8, 18, 29, 0.74)';
+      dctx.strokeStyle = 'rgba(171, 213, 229, 0.24)';
+      const cardW = Math.min(200, width * 0.28);
+      const cardH = 58;
+      const cardX = Math.min(width - cardW - 24, focusX + 14);
+      const cardY = Math.max(76, Math.min(height - cardH - 22, focusPredY - 12));
+      dctx.beginPath();
+      dctx.roundRect(cardX, cardY, cardW, cardH, 8);
+      dctx.fill();
+      dctx.stroke();
+      dctx.fillStyle = '#e9f7ff';
+      dctx.font = `800 ${Math.round(width * 0.017)}px Inter, sans-serif`;
+      dctx.fillText('残差 eᵢ = ẑᵢ − zᵢ', cardX + 13, cardY + 23);
+      dctx.fillStyle = '#ffcf68';
+      dctx.font = `${Math.round(width * 0.016)}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+      dctx.fillText(format(predict(focusPoint) - focusPoint.z, 2) + ' kg', cardX + 13, cardY + 45);
+      dctx.restore();
+    }
+
+    function colorForLoss(value, minLoss, maxLoss) {
+      const t = Math.max(0, Math.min(1, (Math.log(value + 1) - Math.log(minLoss + 1)) / (Math.log(maxLoss + 1) - Math.log(minLoss + 1))));
+      const stops = [
+        [9, 37, 87],
+        [21, 104, 166],
+        [42, 181, 172],
+        [126, 213, 96],
+        [255, 221, 89]
+      ];
+      const scaled = (1 - t) * (stops.length - 1);
+      const i = Math.min(stops.length - 2, Math.floor(scaled));
+      const f = scaled - i;
+      const a = stops[i];
+      const b = stops[i + 1];
+      return `rgb(${Math.round(a[0] + (b[0] - a[0]) * f)}, ${Math.round(a[1] + (b[1] - a[1]) * f)}, ${Math.round(a[2] + (b[2] - a[2]) * f)})`;
+    }
+
+    function drawContours(ctx, scale, width, height) {
+      const steps = 74;
+      const cellW = scale.plotW / steps;
+      const cellH = scale.plotH / steps;
+      const losses = [];
+      let minLoss = Infinity;
+      let maxLoss = -Infinity;
+      for (let row = 0; row <= steps; row += 1) {
+        for (let col = 0; col <= steps; col += 1) {
+          const w = bounds.wMin + (col / steps) * (bounds.wMax - bounds.wMin);
+          const b = bounds.bMin + (1 - row / steps) * (bounds.bMax - bounds.bMin);
+          const value = lossAt(w, b);
+          losses.push(value);
+          minLoss = Math.min(minLoss, value);
+          maxLoss = Math.max(maxLoss, value);
+        }
+      }
+
+      let index = 0;
+      for (let row = 0; row <= steps; row += 1) {
+        for (let col = 0; col <= steps; col += 1) {
+          const x = scale.pad.left + col * cellW;
+          const y = scale.pad.top + row * cellH;
+          ctx.fillStyle = colorForLoss(losses[index], minLoss, maxLoss);
+          ctx.globalAlpha = 0.68;
+          ctx.fillRect(x, y, cellW + 1, cellH + 1);
+          index += 1;
+        }
+      }
+      ctx.globalAlpha = 1;
+
+      const levels = [3, 8, 18, 35, 65, 110, 180, 280, 420, 620, 900, 1300];
+      levels.forEach((level, levelIndex) => {
+        ctx.strokeStyle = levelIndex < 6 ? 'rgba(123, 241, 212, 0.32)' : 'rgba(88, 166, 255, 0.24)';
+        ctx.lineWidth = 1;
+        for (let row = 1; row < steps; row += 1) {
+          ctx.beginPath();
+          let drawing = false;
+          for (let col = 1; col < steps; col += 1) {
+            const w = bounds.wMin + (col / steps) * (bounds.wMax - bounds.wMin);
+            const b = bounds.bMin + (1 - row / steps) * (bounds.bMax - bounds.bMin);
+            const value = lossAt(w, b);
+            if (Math.abs(value - level) < level * 0.035 + 0.4) {
+              const x = scale.x(w);
+              const y = scale.y(b);
+              if (!drawing) {
+                ctx.moveTo(x, y);
+                drawing = true;
+              } else {
+                ctx.lineTo(x, y);
+              }
+            } else if (drawing) {
+              ctx.stroke();
+              ctx.beginPath();
+              drawing = false;
+            }
+          }
+          if (drawing) ctx.stroke();
+        }
+      });
+    }
+
+    function drawLoss() {
+      const { width, height } = resizeCanvas(lossCanvas);
+      const scale = lossScale(width, height);
+      lctx.clearRect(0, 0, width, height);
+
+      const bg = lctx.createLinearGradient(0, 0, 0, height);
+      bg.addColorStop(0, '#081927');
+      bg.addColorStop(1, '#06121d');
+      lctx.fillStyle = bg;
+      lctx.fillRect(0, 0, width, height);
+
+      drawContours(lctx, scale, width, height);
+      drawGrid(lctx, scale, width, height, [-15, -10, -5, 0, 5, 10, 15, 20], [40, 55, 70, 85, 100, 110], 'k（斜率）', 'b（截距）');
+
+      lctx.save();
+      lctx.strokeStyle = 'rgba(255, 183, 67, 0.92)';
+      lctx.lineWidth = Math.max(3, width * 0.004);
+      lctx.shadowColor = 'rgba(255, 183, 67, 0.52)';
+      lctx.shadowBlur = 14;
+      lctx.beginPath();
+      state.path.forEach((point, index) => {
+        const x = scale.x(point.w);
+        const y = scale.y(point.b);
+        if (index === 0) lctx.moveTo(x, y);
+        else lctx.lineTo(x, y);
+      });
+      lctx.stroke();
+      lctx.restore();
+
+      state.path.forEach((point, index) => {
+        if (index % Math.max(1, Math.ceil(state.path.length / 16)) !== 0 && index !== state.path.length - 1) return;
+        const x = scale.x(point.w);
+        const y = scale.y(point.b);
+        lctx.save();
+        lctx.fillStyle = index === state.path.length - 1 ? '#fff26a' : '#ffb743';
+        lctx.strokeStyle = '#fff8d0';
+        lctx.lineWidth = 2;
+        lctx.shadowColor = 'rgba(255, 183, 67, 0.64)';
+        lctx.shadowBlur = 15;
+        lctx.beginPath();
+        lctx.arc(x, y, index === state.path.length - 1 ? 8 : 6, 0, Math.PI * 2);
+        lctx.fill();
+        lctx.stroke();
+        lctx.restore();
+      });
+
+      const optimumX = scale.x(wOpt);
+      const optimumY = scale.y(bOpt);
+      lctx.save();
+      lctx.fillStyle = '#fff36b';
+      lctx.strokeStyle = '#fff8d0';
+      lctx.lineWidth = 2;
+      lctx.shadowColor = 'rgba(255, 243, 107, 0.7)';
+      lctx.shadowBlur = 18;
+      drawStar(lctx, optimumX, optimumY, 14, 6);
+      lctx.fill();
+      lctx.stroke();
+      lctx.fillStyle = '#fff8d0';
+      lctx.font = `800 ${Math.round(width * 0.018)}px Inter, sans-serif`;
+      lctx.fillText('最优解', optimumX + 14, optimumY + 5);
+      lctx.restore();
+
+      const current = state.path[state.path.length - 1];
+      if (current) {
+        const grad = gradientAt(current.w, current.b);
+        const norm = Math.hypot(grad.w, grad.b) || 1;
+        const x = scale.x(current.w);
+        const y = scale.y(current.b);
+        const step = Math.min(width, height) * 0.08;
+        const x2 = x - (grad.w / norm) * step;
+        const y2 = y + (grad.b / norm) * step;
+        drawArrow(lctx, x, y, x2, y2, '#ffcf68');
+      }
+    }
+
+    function drawStar(ctx, cx, cy, outer, inner) {
+      ctx.beginPath();
+      for (let i = 0; i < 10; i += 1) {
+        const radius = i % 2 === 0 ? outer : inner;
+        const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+        const x = cx + Math.cos(angle) * radius;
+        const y = cy + Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    }
+
+    function drawArrow(ctx, x1, y1, x2, y2, color) {
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = 'rgba(255, 183, 67, 0.5)';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - Math.cos(angle - Math.PI / 6) * 13, y2 - Math.sin(angle - Math.PI / 6) * 13);
+      ctx.lineTo(x2 - Math.cos(angle + Math.PI / 6) * 13, y2 - Math.sin(angle + Math.PI / 6) * 13);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function updateReadouts() {
+      const loss = lossAt(state.w, state.b);
+      const mse = loss * 2;
+      const grad = gradientAt(state.w, state.b);
+      const alpha = getAlpha();
+      const distance = Math.hypot(state.w - wOpt, state.b - bOpt);
+      const gradNorm = Math.hypot(grad.w, grad.b);
+      const nextW = state.w - alpha * grad.w;
+      const nextB = state.b - alpha * grad.b;
+      const alphaText = format(alpha, 3);
+      const gradWText = format(grad.w, 4);
+      const gradBText = format(grad.b, 4);
+
+      alphaValue.textContent = alphaText;
+      els.kReadout.textContent = format(state.w, 4);
+      els.bReadout.textContent = format(state.b, 4);
+      els.gradientSummary.innerHTML = `∇J(k,b)=(<span class="calc-gradient">${gradWText}</span>, <span class="calc-gradient">${gradBText}</span>)`;
+      els.nextKCalc.innerHTML = `kₙ₊₁ = <span class="calc-current">${format(state.w, 4)}</span> − <span class="calc-alpha">${alphaText}</span>×(<span class="calc-gradient">${gradWText}</span>) = <span class="calc-result">${format(nextW, 4)}</span>`;
+      els.nextBCalc.innerHTML = `bₙ₊₁ = <span class="calc-current">${format(state.b, 4)}</span> − <span class="calc-alpha">${alphaText}</span>×(<span class="calc-gradient">${gradBText}</span>) = <span class="calc-result">${format(nextB, 4)}</span>`;
+      els.sideIter.textContent = String(state.iter);
+      els.sideLoss.textContent = format(loss, 4);
+      els.sideMse.textContent = format(mse, 4);
+      els.distanceReadout.textContent = format(distance, 4);
+      els.gradK.textContent = `∂J/∂k = ${gradWText}`;
+      els.gradB.textContent = `∂J/∂b = ${gradBText}`;
+      els.statusText.textContent = state.playing ? '运行中' : '已暂停';
+      els.convergeText.textContent = gradNorm < 0.012 ? '已接近最优' : state.playing ? '损失下降中' : '可继续迭代';
+    }
+
+    function render() {
+      updateReadouts();
+      drawData();
+      drawLoss();
+    }
+
+    function stepOnce() {
+      if (state.iter >= maxIter) {
+        state.playing = false;
+        return;
+      }
+      const grad = gradientAt(state.w, state.b);
+      const alpha = getAlpha();
+      state.w -= alpha * grad.w;
+      state.b -= alpha * grad.b;
+      state.iter += 1;
+      state.path.push({ w: state.w, b: state.b });
+      if (Math.hypot(grad.w, grad.b) < 0.003) {
+        state.playing = false;
+      }
+      render();
+    }
+
+    function animate(timestamp) {
+      if (!state.playing) return;
+      if (!state.lastStep || timestamp - state.lastStep > 120) {
+        stepOnce();
+        state.lastStep = timestamp;
+      }
+      state.raf = requestAnimationFrame(animate);
+    }
+
+    function start() {
+      if (state.playing) return;
+      state.playing = true;
+      state.lastStep = 0;
+      updateReadouts();
+      state.raf = requestAnimationFrame(animate);
+    }
+
+    function pause() {
+      state.playing = false;
+      cancelAnimationFrame(state.raf);
+      updateReadouts();
+    }
+
+    function reset() {
+      pause();
+      state.w = Number(initialW.value);
+      state.b = Number(initialB.value);
+      state.iter = 0;
+      state.path = [{ w: state.w, b: state.b }];
+      render();
+    }
+
+    playBtn.addEventListener('click', start);
+    pauseBtn.addEventListener('click', pause);
+    stepBtn.addEventListener('click', () => {
+      pause();
+      stepOnce();
+    });
+    resetBtn.addEventListener('click', reset);
+    alphaSlider.addEventListener('input', () => {
+      updateReadouts();
+    });
+    initialW.addEventListener('change', reset);
+    initialB.addEventListener('change', reset);
+    window.addEventListener('resize', render);
+
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+      CanvasRenderingContext2D.prototype.roundRect = function roundRect(x, y, width, height, radius) {
+        const r = Math.min(radius, width / 2, height / 2);
+        this.moveTo(x + r, y);
+        this.arcTo(x + width, y, x + width, y + height, r);
+        this.arcTo(x + width, y + height, x, y + height, r);
+        this.arcTo(x, y + height, x, y, r);
+        this.arcTo(x, y, x + width, y, r);
+        return this;
+      };
+    }
+
+    reset();
+  </script>
+</body>
+</html>

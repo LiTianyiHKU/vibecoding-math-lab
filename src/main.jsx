@@ -151,6 +151,15 @@ const demos = [
     formula: '∫C F·dr'
   },
   {
+    id: 'gradient-descent-regression',
+    title: '梯度下降：线性回归',
+    subject: 'calculus',
+    href: '微积分/梯度下降：线性回归.html',
+    summary: '用身高体重数据演示梯度下降，观察拟合直线、损失函数等高线和参数更新如何同步变化。',
+    icon: FunctionSquare,
+    formula: 'J(k,b)'
+  },
+  {
     id: 'fourier-series',
     title: '傅立叶级数',
     subject: 'calculus',
